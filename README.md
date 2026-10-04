@@ -59,11 +59,17 @@ flutter pub get
 
 Esto descarga todos los paquetes que usa el proyecto (incluyendo `firebase_core`, `cloud_firestore`, `firebase_auth`, etc.), según lo que está declarado en `pubspec.yaml`.
 
-## Firebase ya está configurado — no necesitas volver a configurarlo
+## Firebase ya está configurado 
 
-El archivo `lib/firebase_options.dart` ya viene incluido en el repositorio con las credenciales reales del proyecto `easyhome-6ef93`. **No es necesario correr `flutterfire configure`**; con clonar el repo y hacer `flutter pub get` ya tienes la conexión lista.
+El archivo `lib/firebase_options.dart` ya viene incluido en el repositorio con las credenciales reales del proyecto `easyhome-6ef93`. **No es necesario correr `flutterfire configure`.**
 
-Si por algún motivo Firebase no conecta, verifica que el archivo `android/app/google-services.json` también se haya descargado correctamente al clonar (debe existir y no estar vacío).
+Sin embargo, `android/app/google-services.json` **no está en el repositorio** (está en `.gitignore` a propósito, para no subir identificadores de proyecto al historial de GitHub). Antes de compilar, cada integrante debe colocarlo manualmente:
+
+1. Pide el archivo a Jaqueline (por WhatsApp/Drive), **o**
+2. Descárgalo tú mismo: Firebase Console → proyecto `easyhome-6ef93` → ⚙️ Configuración del proyecto → en la app Android registrada → botón "Descargar google-services.json".
+3. Coloca el archivo exactamente en: `android/app/google-services.json`
+
+Sin este archivo, `flutter run` va a fallar al compilar para Android.
 
 ## Correr la app
 
