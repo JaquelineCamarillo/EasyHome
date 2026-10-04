@@ -4,9 +4,9 @@ App de hogar compartido que unifica **lista de compras** y **reparto de quehacer
 
 ## Equipo
 
-- Jaqueline Camarillo Olaez
-- Carol Ríos
-- Princes Guerrero
+- Juana Jaqueline Camarillo Olaez
+- Carol Guadalupe Ríos Rios
+- Princes Rocio Guerrero Sanchez
 
 **Profesor:** Anastacio Rodríguez García
 **Metodología:** Scrum — tablero de Trello: https://trello.com/invite/b/690aa99fadeed0a42d97cd71/ATTIa3fa005ee2bac61064250270bfae8081C8B98B56/easyhome
@@ -42,6 +42,13 @@ Resuelve cualquier ❌ o ⚠️ que marque antes de seguir (sobre todo las licen
 ```
 git clone https://github.com/JaquelineCamarillo/EasyHome.git
 cd EasyHome
+```
+
+Por defecto quedas en la rama `main`. Para empezar a trabajar, cambia a `develop`:
+
+```
+git checkout develop
+git pull
 ```
 
 ## Instalar dependencias
@@ -89,23 +96,56 @@ Es solo una advertencia de versiones futuras de Flutter, no rompe el build actua
 **"Lost connection to device"**
 Pasa si el teléfono se bloquea, se desconecta el cable, o la app pasa mucho tiempo en segundo plano. Vuelve a correr `flutter run`.
 
-## Estructura del proyecto (resumen)
+## Estructura del proyecto
 
 ```
 lib/
   main.dart              # Punto de entrada, inicializa Firebase
   firebase_options.dart  # Configuración generada por FlutterFire CLI
+  models/                # Clases de datos (Hogar, Usuario, Producto, Quehacer)
+  screens/                # Pantallas de la app
+  services/               # Lógica de acceso a Firestore/Auth
+  widgets/                 # Componentes de UI reutilizables
 android/                 # Proyecto nativo Android
 ios/                     # Proyecto nativo iOS
+bitacora/                # Documentos de arquitectura, modelo de datos y decisiones del equipo
 ```
 
 ## Modelo de datos (Firestore)
 
-El modelo de datos (colecciones `hogares`, `usuarios`, `productos`, `quehaceres`) está documentado en `/bitacora/modelo-datos-firestore.md`, junto con las reglas de seguridad propuestas.
+El modelo de datos (colecciones `hogares`, `usuarios`, `productos`, `quehaceres`) está documentado en `bitacora/modelo-datos-firestore.md`, junto con las reglas de seguridad propuestas.
+
+La arquitectura general del proyecto (stack, estructura de carpetas, decisiones del equipo) está en `bitacora/arquitectura.md`.
+
+## Ramas del repositorio
+
+- **`main`** — código estable, siempre listo para entregar o demostrar.
+- **`develop`** — rama de integración, donde se juntan los módulos en desarrollo antes de pasar a `main`.
+- **`feature/nombre-funcionalidad`** — una rama por tarea o funcionalidad (ej. `feature/pantalla-registro`, `feature/lista-compras`, `feature/reparto-quehaceres`).
+
+### Flujo para trabajar en una tarea
+
+1. Crear la rama desde `develop`:
+   ```
+   git checkout develop
+   git pull
+   git checkout -b feature/nombre-funcionalidad
+   ```
+2. Hacer el trabajo y subir los commits:
+   ```
+   git add .
+   git commit -m "Descripción del cambio"
+   git push -u origin feature/nombre-funcionalidad
+   ```
+3. Abrir un **Pull Request** en GitHub hacia `develop`.
+4. Al menos **otro integrante del equipo revisa** el PR antes de aprobarlo.
+5. Hacer **merge** a `develop` una vez aprobado.
+6. Cuando `develop` esté estable, se hace merge hacia `main`.
 
 ## Flujo de trabajo del equipo
 
 1. Antes de empezar una tarea, revisa la tarjeta correspondiente en Trello.
-2. Trabaja en tu rama o directamente en `main` según lo acordado en equipo (ajustar aquí si deciden usar ramas por feature).
+2. Trabaja siempre sobre una rama `feature/...` creada desde `develop` (ver sección "Ramas del repositorio" arriba). Nunca hagas commits directo a `main` ni a `develop`.
 3. Haz commits descriptivos y sube tus cambios con `git push`.
-4. Marca la tarjeta de Trello como completada cuando los criterios de aceptación estén cumplidos.
+4. Abre un Pull Request hacia `develop` y espera la revisión de al menos otro integrante.
+5. Marca la tarjeta de Trello como completada cuando los criterios de aceptación estén cumplidos.
