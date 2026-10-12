@@ -1,30 +1,28 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+/// Validaciones del formulario de registro.
+/// Devuelven `null` si el valor es válido, o el mensaje de error a mostrar.
+class Validators {
+  static final RegExp _emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
+  static String? nombre(String? value) {
+    if ((value ?? '').trim().isEmpty) return 'Ingresa tu nombre';
+    return null;
+  }
 
-import 'package:easyhome/main.dart';
+  static String? correo(String? value) {
+    if (!_emailRegex.hasMatch((value ?? '').trim())) return 'Correo inválido';
+    return null;
+  }
 
-void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  /// Firebase Auth exige mínimo 6 caracteres.
+  static String? contrasena(String? value) {
+    if ((value ?? '').length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres';
+    }
+    return null;
+  }
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
-  });
+  static String? confirmarContrasena(String? value, String contrasena) {
+    if (value != contrasena) return 'Las contraseñas no coinciden';
+    return null;
+  }
 }
