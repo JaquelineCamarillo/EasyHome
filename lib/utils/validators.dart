@@ -1,4 +1,4 @@
-/// Validaciones del formulario de registro.
+/// Validaciones de los formularios de registro e inicio de sesión.
 /// Devuelven `null` si el valor es válido, o el mensaje de error a mostrar.
 class Validators {
   static final RegExp _emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
@@ -13,11 +13,17 @@ class Validators {
     return null;
   }
 
-  /// Firebase Auth exige mínimo 6 caracteres.
+  /// Registro: Firebase Auth exige mínimo 6 caracteres.
   static String? contrasena(String? value) {
     if ((value ?? '').length < 6) {
       return 'La contraseña debe tener al menos 6 caracteres';
     }
+    return null;
+  }
+
+  /// Login: solo se exige que no esté vacía.
+  static String? contrasenaNoVacia(String? value) {
+    if ((value ?? '').isEmpty) return 'Ingresa tu contraseña';
     return null;
   }
 

@@ -14,11 +14,19 @@ void main() {
     });
   });
 
-  group('contraseña', () {
+  group('contraseña (registro)', () {
     test('mínimo 6 caracteres', () {
       expect(Validators.contrasena('12345'),
           'La contraseña debe tener al menos 6 caracteres');
       expect(Validators.contrasena('123456'), isNull);
+    });
+  });
+
+  group('contraseña (login)', () {
+    test('solo exige que no esté vacía', () {
+      expect(Validators.contrasenaNoVacia(''), 'Ingresa tu contraseña');
+      expect(Validators.contrasenaNoVacia(null), 'Ingresa tu contraseña');
+      expect(Validators.contrasenaNoVacia('a'), isNull);
     });
   });
 
