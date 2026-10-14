@@ -1,7 +1,9 @@
-/// Validaciones de los formularios de registro e inicio de sesión.
+/// Validaciones de los formularios de registro, inicio de sesión y hogar.
 /// Devuelven `null` si el valor es válido, o el mensaje de error a mostrar.
 class Validators {
   static final RegExp _emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
+  static const int maxNombreHogar = 30;
 
   static String? nombre(String? value) {
     if ((value ?? '').trim().isEmpty) return 'Ingresa tu nombre';
@@ -29,6 +31,16 @@ class Validators {
 
   static String? confirmarContrasena(String? value, String contrasena) {
     if (value != contrasena) return 'Las contraseñas no coinciden';
+    return null;
+  }
+
+  /// Nombre del hogar: obligatorio y máximo [maxNombreHogar] caracteres.
+  static String? nombreHogar(String? value) {
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty) return 'Ingresa el nombre del hogar';
+    if (texto.length > maxNombreHogar) {
+      return 'Máximo $maxNombreHogar caracteres';
+    }
     return null;
   }
 }

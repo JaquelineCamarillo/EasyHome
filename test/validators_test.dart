@@ -37,4 +37,19 @@ void main() {
           'Las contraseñas no coinciden');
     });
   });
+
+  group('nombre del hogar', () {
+    test('no acepta vacío ni solo espacios', () {
+      expect(Validators.nombreHogar(''), 'Ingresa el nombre del hogar');
+      expect(Validators.nombreHogar('    '), 'Ingresa el nombre del hogar');
+      expect(Validators.nombreHogar(null), 'Ingresa el nombre del hogar');
+    });
+    test('máximo 30 caracteres', () {
+      expect(Validators.nombreHogar('a' * 30), isNull);
+      expect(Validators.nombreHogar('a' * 31), 'Máximo 30 caracteres');
+    });
+    test('acepta un nombre normal', () {
+      expect(Validators.nombreHogar('Casa de los Pérez'), isNull);
+    });
+  });
 }
