@@ -13,6 +13,8 @@ class HogarException implements Exception {
   String toString() => mensaje;
 }
 
+enum _ResultadoUnion { unido, yaEsteHogar, yaOtroHogar, sinPerfil }
+
 /// Operaciones sobre hogares en Firestore.
 class HogarService {
   HogarService({FirebaseAuth? auth, FirebaseFirestore? firestore})
@@ -24,9 +26,16 @@ class HogarService {
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
   FirebaseFirestore get _db => _firestoreOverride ?? FirebaseFirestore.instance;
 
+  // Crear hogar
   static const msgNoSePudoCrear = 'No se pudo crear el hogar, intenta de nuevo';
   static const msgYaTieneHogar = 'Ya perteneces a un hogar';
   static const msgSesionExpirada = 'Tu sesión expiró, inicia sesión de nuevo';
+
+  // Unirse a un hogar
+  static const msgCodigoInvalido = 'Código inválido, verifica e intenta de nuevo';
+  static const msgYaPerteneceEsteHogar = 'Ya perteneces a este hogar';
+  static const msgSinConexion = 'No se pudo conectar, intenta de nuevo';
+  static const msgNoSePudoUnir = 'No se pudo unir al hogar, intenta de nuevo';
 
   /// Crea el hogar, genera su código único y vincula al usuario actual como
   /// administrador. Devuelve el id del hogar creado.
@@ -66,6 +75,59 @@ class HogarService {
     } on FirebaseException catch (e) {
       debugPrint('Firestore error: ${e.code} - ${e.message}');
       throw const HogarException(msgNoSePudoCrear);
+    }
+  }
+
+  /// Une al usuario actual al hogar que tenga ese código de invitación, como
+  /// integrante (no administrador). Devuelve el id del hogar.
+  ///
+  /// Si ya pertenece a ese hogar lanza [HogarException] sin escribir nada.
+  Future<String> unirseAHogar({required String codigo}) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw const HogarException(msgSesionExpirada);
+
+    final codigoNormalizado = codigo.trim().toUpperCase();
+
+    try {
+      // Query por campo (el código NO es el id del documento). Se fuerza
+      // lectura del servidor: sin internet debe fallar, no responder "no existe"
+      // con una caché vacía.
+      final resultado = await _db
+          .collection('hogares')
+          .where('codigoInvitacion', isEqualTo: codigoNormalizado)
+          .limit(1)
+          .get(const GetOptions(source: Source.server));
+
+      if (resultado.docs.isEmpty) throw const HogarException(msgCodigoInvalido);
+      final hogarId = resultado.docs.first.id;
+
+      final usuarioRef = _db.collection('usuarios').doc(uid);
+
+      final estado = await _db.runTransaction<_ResultadoUnion>((tx) async {
+        final usuario = await tx.get(usuarioRef);
+        if (!usuario.exists) return _ResultadoUnion.sinPerfil;
+
+        final actual = usuario.data()?['hogarId'] as String?;
+        if (actual == hogarId) return _ResultadoUnion.yaEsteHogar;
+        if (actual != null) return _ResultadoUnion.yaOtroHogar;
+
+        tx.update(usuarioRef, {'hogarId': hogarId, 'esAdministrador': false});
+        return _ResultadoUnion.unido;
+      });
+
+      switch (estado) {
+        case _ResultadoUnion.unido:
+          return hogarId;
+        case _ResultadoUnion.yaEsteHogar:
+          throw const HogarException(msgYaPerteneceEsteHogar);
+        case _ResultadoUnion.yaOtroHogar:
+          throw const HogarException(msgYaTieneHogar);
+        case _ResultadoUnion.sinPerfil:
+          throw const HogarException(msgNoSePudoUnir);
+      }
+    } on FirebaseException catch (e) {
+      debugPrint('Firestore error: ${e.code} - ${e.message}');
+      throw const HogarException(msgSinConexion);
     }
   }
 
