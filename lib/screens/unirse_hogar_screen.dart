@@ -152,8 +152,9 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
                         : const Text('Unirse'),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text('¿No tienes un código? '),
                       GestureDetector(
