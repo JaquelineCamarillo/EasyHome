@@ -34,8 +34,12 @@ const _ana = Integrante(uid: '1', nombre: 'Ana', esAdministrador: true);
 const _luis = Integrante(uid: '2', nombre: 'Luis', esAdministrador: false);
 const _marco = Integrante(uid: '3', nombre: 'Marco', esAdministrador: false);
 
-Future<FakePerfilService> _montar(WidgetTester tester, {String? hogarId = 'h1'}) async {
-  final fake = FakePerfilService();
+Future<FakePerfilService> _montar(
+  WidgetTester tester, {
+  String? hogarId = 'h1',
+  String? hogarIdActual = 'h1',
+}) async {
+  final fake = FakePerfilService()..hogarIdActual = hogarIdActual;
   addTearDown(fake.hogarCtrl.close);
   addTearDown(fake.integrantesCtrl.close);
 
@@ -43,6 +47,21 @@ Future<FakePerfilService> _montar(WidgetTester tester, {String? hogarId = 'h1'})
     home: PerfilHogarScreen(hogarId: hogarId, hogarService: fake),
   ));
   return fake;
+}
+
+/// Emite primero el hogar y, ya con la lista construida (que recién entonces
+/// se suscribe a los integrantes), emite los integrantes.
+Future<void> _emitir(
+  WidgetTester tester,
+  FakePerfilService fake, {
+  List<Integrante>? integrantes,
+}) async {
+  fake.hogarCtrl.add(_hogar);
+  await tester.pump();
+  if (integrantes != null) {
+    fake.integrantesCtrl.add(integrantes);
+    await tester.pump();
+  }
 }
 
 void main() {
@@ -54,8 +73,7 @@ void main() {
 
   testWidgets('con el hogar cargado pero sin integrantes aún, spinner en la lista', (tester) async {
     final fake = await _montar(tester);
-    fake.hogarCtrl.add(_hogar);
-    await tester.pump();
+    await _emitir(tester, fake);
 
     expect(find.text('Depa de Ana'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -63,9 +81,7 @@ void main() {
 
   testWidgets('muestra nombre del hogar, integrantes y distingue al admin', (tester) async {
     final fake = await _montar(tester);
-    fake.hogarCtrl.add(_hogar);
-    fake.integrantesCtrl.add([_ana, _luis, _marco]);
-    await tester.pump();
+    await _emitir(tester, fake, integrantes: [_ana, _luis, _marco]);
 
     expect(find.text('Depa de Ana'), findsOneWidget);
     expect(find.text('Integrantes (3)'), findsOneWidget);
@@ -79,9 +95,7 @@ void main() {
 
   testWidgets('si solo está el creador, muestra solo a esa persona sin error', (tester) async {
     final fake = await _montar(tester);
-    fake.hogarCtrl.add(_hogar);
-    fake.integrantesCtrl.add([_ana]);
-    await tester.pump();
+    await _emitir(tester, fake, integrantes: [_ana]);
 
     expect(find.text('Integrantes (1)'), findsOneWidget);
     expect(find.text('Ana'), findsOneWidget);
@@ -90,9 +104,7 @@ void main() {
 
   testWidgets('se actualiza en tiempo real cuando alguien se une', (tester) async {
     final fake = await _montar(tester);
-    fake.hogarCtrl.add(_hogar);
-    fake.integrantesCtrl.add([_ana]);
-    await tester.pump();
+    await _emitir(tester, fake, integrantes: [_ana]);
     expect(find.text('Luis'), findsNothing);
 
     fake.integrantesCtrl.add([_ana, _luis]);
@@ -117,9 +129,7 @@ void main() {
         .setMockMethodCallHandler(SystemChannels.platform, null));
 
     final fake = await _montar(tester);
-    fake.hogarCtrl.add(_hogar);
-    fake.integrantesCtrl.add([_ana]);
-    await tester.pump();
+    await _emitir(tester, fake, integrantes: [_ana]);
 
     expect(find.text('A3F9K2'), findsOneWidget);
 
@@ -132,8 +142,7 @@ void main() {
   });
 
   testWidgets('si no recibe hogarId lo obtiene del usuario actual', (tester) async {
-    final fake = await _montar(tester, hogarId: null);
-    fake.hogarIdActual = 'h99';
+    final fake = await _montar(tester, hogarId: null, hogarIdActual: 'h99');
     await tester.pump(); // resuelve el Future de obtenerHogarIdActual
     await tester.pump();
 
