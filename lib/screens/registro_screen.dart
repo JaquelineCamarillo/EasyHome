@@ -197,8 +197,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
                         : const Text('Crear cuenta'),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text('¿Ya tienes cuenta? '),
                       GestureDetector(
