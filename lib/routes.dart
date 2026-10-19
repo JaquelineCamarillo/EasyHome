@@ -2,6 +2,7 @@
 class AppRoutes {
   static const registro = '/registro'; // #3
   static const login = '/login'; // #4
-  static const hogar = '/hogar'; // #5/#6 Crear / Unirse a un hogar
+  static const hogar = '/hogar'; // #5 Crear un hogar (entrada para usuarios sin hogar)
+  static const unirseHogar = '/unirse-hogar'; // #6 Unirse con código
   static const dashboard = '/dashboard'; // Pantalla principal (compras + quehaceres)
 }
