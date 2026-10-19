@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/hogar.dart';
+import '../models/integrante.dart';
 import '../utils/codigo_invitacion.dart';
 
 /// Error ya traducido, listo para mostrarse al usuario.
@@ -129,6 +131,42 @@ class HogarService {
       debugPrint('Firestore error: ${e.code} - ${e.message}');
       throw const HogarException(msgSinConexion);
     }
+  }
+
+  /// `hogarId` del usuario actual (`null` si todavía no tiene hogar).
+  Future<String?> obtenerHogarIdActual() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw const HogarException(msgSesionExpirada);
+
+    try {
+      final doc = await _db.collection('usuarios').doc(uid).get();
+      return doc.data()?['hogarId'] as String?;
+    } on FirebaseException catch (e) {
+      debugPrint('Firestore error: ${e.code} - ${e.message}');
+      throw const HogarException(msgSinConexion);
+    }
+  }
+
+  /// Documento del hogar en tiempo real (`null` si ya no existe).
+  Stream<Hogar?> observarHogar(String hogarId) {
+    return _db.collection('hogares').doc(hogarId).snapshots().map((snap) {
+      final data = snap.data();
+      if (!snap.exists || data == null) return null;
+      return Hogar.fromMap(snap.id, data);
+    });
+  }
+
+  /// Integrantes del hogar en tiempo real: administradores primero y luego
+  /// por orden alfabético. Se ordena aquí para no requerir un índice
+  /// compuesto en Firestore.
+  Stream<List<Integrante>> observarIntegrantes(String hogarId) {
+    return _db
+        .collection('usuarios')
+        .where('hogarId', isEqualTo: hogarId)
+        .snapshots()
+        .map((query) => Integrante.ordenar(
+              query.docs.map((d) => Integrante.fromMap(d.id, d.data())),
+            ));
   }
 
   Future<bool> _codigoExiste(String codigo) async {

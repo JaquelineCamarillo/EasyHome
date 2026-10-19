@@ -8,6 +8,7 @@ import 'screens/login_screen.dart';
 import 'screens/registro_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/unirse_hogar_screen.dart';
+import 'screens/perfil_hogar_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,6 +49,7 @@ class EasyHomeApp extends StatelessWidget {
         AppRoutes.hogar: (_) => const CrearUnirseHogarScreen(),
         AppRoutes.dashboard: (_) => const DashboardScreen(),
         AppRoutes.unirseHogar: (_) => const UnirseHogarScreen(),
+        AppRoutes.perfilHogar: (_) => const PerfilHogarScreen(),
       },
     );
   }
