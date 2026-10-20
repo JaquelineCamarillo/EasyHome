@@ -11,7 +11,7 @@ class AuthException implements Exception {
   String toString() => mensaje;
 }
 
-/// Acceso a Firebase Auth + Firestore para el registro de usuarios.
+/// Acceso a Firebase Auth + Firestore para registro e inicio de sesión.
 /// Las pantallas no hablan directo con Firebase: pasan por este servicio.
 class AuthService {
   AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
@@ -28,6 +28,8 @@ class AuthService {
   static const msgCorreoEnUso = 'Este correo ya tiene una cuenta registrada';
   static const msgSinConexion = 'No se pudo conectar, intenta de nuevo';
   static const msgGenerico = 'Ocurrió un error, intenta de nuevo';
+  static const msgCredencialesIncorrectas = 'Correo o contraseña incorrectos';
+  static const msgDemasiadosIntentos = 'Demasiados intentos, espera un momento';
 
   /// Crea el usuario en Firebase Auth y su documento en `usuarios/{uid}`.
   /// Lanza [AuthException] con un mensaje en español si algo falla.
@@ -44,7 +46,7 @@ class AuthService {
       );
     } on FirebaseAuthException catch (e) {
       debugPrint('Auth error: ${e.code}');
-      throw AuthException(_traducir(e.code));
+      throw AuthException(_traducirRegistro(e.code));
     }
 
     final user = cred.user;
@@ -67,7 +69,40 @@ class AuthService {
     }
   }
 
-  String _traducir(String code) {
+  /// Inicia sesión y devuelve el `hogarId` del usuario (`null` si todavía no
+  /// pertenece a ningún hogar). Lanza [AuthException] si algo falla.
+  Future<String?> iniciarSesion({
+    required String correo,
+    required String contrasena,
+  }) async {
+    final UserCredential cred;
+    try {
+      cred = await _auth.signInWithEmailAndPassword(
+        email: correo.trim(),
+        password: contrasena,
+      );
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Auth error: ${e.code}');
+      throw AuthException(_traducirLogin(e.code));
+    }
+
+    final user = cred.user;
+    if (user == null) throw const AuthException(msgGenerico);
+
+    try {
+      final doc = await _db.collection('usuarios').doc(user.uid).get();
+      return doc.data()?['hogarId'] as String?;
+    } on FirebaseException catch (e) {
+      debugPrint('Firestore error: ${e.code} - ${e.message}');
+      // No dejamos una sesión abierta a medias si no pudimos leer el perfil.
+      try {
+        await _auth.signOut();
+      } catch (_) {}
+      throw const AuthException(msgSinConexion);
+    }
+  }
+
+  String _traducirRegistro(String code) {
     switch (code) {
       case 'email-already-in-use':
         return msgCorreoEnUso;
@@ -77,6 +112,24 @@ class AuthService {
         return 'Correo inválido';
       case 'weak-password':
         return 'La contraseña debe tener al menos 6 caracteres';
+      default:
+        return msgGenerico;
+    }
+  }
+
+  String _traducirLogin(String code) {
+    switch (code) {
+      // Mensaje genérico a propósito: no revelar si el correo existe o no.
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return msgCredencialesIncorrectas;
+      case 'too-many-requests':
+        return msgDemasiadosIntentos;
+      case 'network-request-failed':
+        return msgSinConexion;
+      case 'invalid-email':
+        return 'Correo inválido';
       default:
         return msgGenerico;
     }
