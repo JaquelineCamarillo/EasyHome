@@ -4,6 +4,7 @@ import '../models/producto.dart';
 import '../routes.dart';
 import '../services/compras_service.dart';
 import '../services/hogar_service.dart';
+import '../utils/app_feedback.dart';
 
 /// Pantalla #9 — Dashboard de compras en tiempo real.
 class DashboardScreen extends StatefulWidget {
@@ -83,25 +84,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         comprado: nuevoEstado,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            nuevoEstado
-                ? '"${producto.nombre}" marcado como comprado'
-                : '"${producto.nombre}" movido a pendientes',
-          ),
-          duration: const Duration(seconds: 2),
-        ),
+      AppFeedback.mostrarExito(
+        context,
+        nuevoEstado
+            ? '"${producto.nombre}" marcado como comprado'
+            : '"${producto.nombre}" movido a pendientes',
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(ComprasService.msgErrorActualizar),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      AppFeedback.mostrarError(context, ComprasService.msgErrorActualizar);
     }
   }
 
@@ -109,20 +100,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       await _compras.eliminarProducto(producto.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Se eliminó "${producto.nombre}"'),
-          duration: const Duration(seconds: 2),
-        ),
+      AppFeedback.mostrarInfo(
+        context,
+        'Se eliminó "${producto.nombre}"',
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(ComprasService.msgSinConexion),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      AppFeedback.mostrarError(context, ComprasService.msgSinConexion);
     }
   }
 

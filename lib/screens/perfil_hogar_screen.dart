@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/hogar.dart';
 import '../models/integrante.dart';
 import '../services/hogar_service.dart';
+import '../utils/app_feedback.dart';
 
 /// Pantalla #7 — Perfil del hogar: integrantes y código de invitación,
 /// escuchando Firestore en tiempo real.
@@ -56,12 +57,7 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
   Future<void> _copiarCodigo(String codigo) async {
     await Clipboard.setData(ClipboardData(text: codigo));
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(
-        content: Text('Código copiado'),
-        duration: Duration(seconds: 2),
-      ));
+    AppFeedback.mostrarExito(context, 'Código copiado');
   }
 
   @override
