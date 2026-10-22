@@ -67,76 +67,150 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
+              constraints: const BoxConstraints(maxWidth: 440),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(Icons.home_rounded,
-                      size: 56, color: tema.colorScheme.primary),
-                  const SizedBox(height: 8),
+                  Center(
+                    child: Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        color: tema.colorScheme.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: tema.colorScheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 18,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.home_work_rounded,
+                        size: 40,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                   Text(
                     'Crea tu hogar',
                     textAlign: TextAlign.center,
-                    style: tema.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+                    style: tema.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
                       color: tema.colorScheme.primary,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
-                    'Ponle nombre para empezar a organizar compras y quehaceres',
+                    'Ponle un nombre para empezar a organizar compras y quehaceres',
                     textAlign: TextAlign.center,
-                    style: tema.textTheme.bodyMedium,
+                    style: tema.textTheme.bodyMedium?.copyWith(
+                      color: Colors.black54,
+                    ),
                   ),
                   const SizedBox(height: 32),
-                  TextFormField(
-                    key: const Key('campo_nombre_hogar'),
-                    controller: _nombreCtrl,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    maxLength: Validators.maxNombreHogar,
-                    textCapitalization: TextCapitalization.sentences,
-                    textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      labelText: 'Nombre del hogar',
-                      hintText: 'Casa de los Pérez',
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE8E4DA)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x08000000),
+                          blurRadius: 16,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
                     ),
-                    validator: Validators.nombreHogar,
-                    onChanged: (_) => setState(() => _errorGeneral = null),
-                    onFieldSubmitted: (_) => _crearHogar(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextFormField(
+                          key: const Key('campo_nombre_hogar'),
+                          controller: _nombreCtrl,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          maxLength: Validators.maxNombreHogar,
+                          textCapitalization: TextCapitalization.sentences,
+                          textInputAction: TextInputAction.done,
+                          decoration: InputDecoration(
+                            labelText: 'Nombre del hogar',
+                            hintText: 'Ej. Casa de los Pérez, Depa 402...',
+                            prefixIcon: Icon(
+                              Icons.cottage_outlined,
+                              color: tema.colorScheme.primary,
+                            ),
+                          ),
+                          validator: Validators.nombreHogar,
+                          onChanged: (_) => setState(() => _errorGeneral = null),
+                          onFieldSubmitted: (_) => _crearHogar(),
+                        ),
+                        const SizedBox(height: 8),
+                        if (_errorGeneral != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: tema.colorScheme.error.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline_rounded,
+                                    size: 18, color: tema.colorScheme.error),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorGeneral!,
+                                    key: const Key('error_general'),
+                                    style: TextStyle(
+                                      color: tema.colorScheme.error,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        FilledButton(
+                          key: const Key('boton_crear_hogar'),
+                          onPressed: (_formularioValido && !_cargando)
+                              ? _crearHogar
+                              : null,
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(50),
+                          ),
+                          child: _cargando
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Crear hogar'),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  if (_errorGeneral != null) ...[
-                    Text(
-                      _errorGeneral!,
-                      key: const Key('error_general'),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: tema.colorScheme.error),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  FilledButton(
-                    key: const Key('boton_crear_hogar'),
-                    onPressed:
-                        (_formularioValido && !_cargando) ? _crearHogar : null,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                    ),
-                    child: _cargando
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Crear hogar'),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   Wrap(
                     alignment: WrapAlignment.center,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      const Text('¿Ya tienes un código? '),
+                      const Text(
+                        '¿Ya tienes un código? ',
+                        style: TextStyle(color: Colors.black54),
+                      ),
                       GestureDetector(
                         key: const Key('enlace_unirse'),
                         onTap: () => Navigator.of(context)
