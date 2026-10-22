@@ -36,10 +36,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _error;
   bool _cargandoInicial = true;
 
+  bool _mostrarBuscador = false;
+  final _busquedaCtrl = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _iniciar();
+  }
+
+  @override
+  void dispose() {
+    _busquedaCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _iniciar() async {
@@ -96,17 +105,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _eliminarProducto(Producto producto) async {
-    try {
-      await _compras.eliminarProducto(producto.id);
-      if (!mounted) return;
-      AppFeedback.mostrarInfo(
-        context,
-        'Se eliminó "${producto.nombre}"',
-      );
-    } catch (_) {
-      if (!mounted) return;
-      AppFeedback.mostrarError(context, ComprasService.msgSinConexion);
+  Future<void> _confirmarEliminarProducto(Producto producto) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text(
+              'Eliminar producto',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Deseas eliminar "${producto.nombre}" de la lista de compras?',
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC24134)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) {
+      try {
+        await _compras.eliminarProducto(producto.id);
+        if (!mounted) return;
+        AppFeedback.mostrarInfo(context, 'Se eliminó "${producto.nombre}"');
+      } catch (_) {
+        if (!mounted) return;
+        AppFeedback.mostrarError(context, ComprasService.msgSinConexion);
+      }
     }
   }
 
@@ -186,8 +226,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
 
         final todos = snapshot.data ?? [];
-        final pendientes = todos.where((p) => !p.comprado).toList();
-        final comprados = todos.where((p) => p.comprado).toList();
+        final query = _busquedaCtrl.text.trim().toLowerCase();
+        final filtrados = query.isEmpty
+            ? todos
+            : todos
+                .where((p) => p.nombre.toLowerCase().contains(query))
+                .toList();
+
+        final pendientes = filtrados.where((p) => !p.comprado).toList();
+        final comprados = filtrados.where((p) => p.comprado).toList();
 
         return DefaultTabController(
           length: 2,
@@ -196,14 +243,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
               backgroundColor: Colors.transparent,
               scrolledUnderElevation: 0,
               elevation: 0,
-              title: const Text(
-                'Lista de compras',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                ),
-              ),
+              title: _mostrarBuscador
+                  ? TextField(
+                      controller: _busquedaCtrl,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Buscar producto...',
+                        isDense: true,
+                        prefixIcon: Icon(Icons.search, size: 20),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    )
+                  : const Text(
+                      'Lista de compras',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
               actions: [
+                IconButton(
+                  tooltip: _mostrarBuscador ? 'Cerrar búsqueda' : 'Buscar',
+                  icon: Icon(_mostrarBuscador
+                      ? Icons.close_rounded
+                      : Icons.search_rounded),
+                  onPressed: () {
+                    setState(() {
+                      _mostrarBuscador = !_mostrarBuscador;
+                      if (!_mostrarBuscador) {
+                        _busquedaCtrl.clear();
+                      }
+                    });
+                  },
+                ),
                 IconButton(
                   key: const Key('boton_perfil_hogar'),
                   tooltip: 'Perfil del hogar',
@@ -272,19 +346,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
             body: SafeArea(
               child: todos.isEmpty
                   ? const _EstadoVacioGlobal()
-                  : TabBarView(
+                  : Column(
                       children: [
-                        _ListaProductos(
-                          productos: pendientes,
-                          tipo: _TipoLista.pendientes,
-                          onToggle: _cambiarEstadoProducto,
-                          onDelete: _eliminarProducto,
-                        ),
-                        _ListaProductos(
-                          productos: comprados,
-                          tipo: _TipoLista.comprados,
-                          onToggle: _cambiarEstadoProducto,
-                          onDelete: _eliminarProducto,
+                        if (todos.isNotEmpty && query.isEmpty)
+                          _ProgresoComprasBanner(
+                            comprados: todos.where((p) => p.comprado).length,
+                            total: todos.length,
+                          ),
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              _ListaProductos(
+                                productos: pendientes,
+                                tipo: _TipoLista.pendientes,
+                                onToggle: _cambiarEstadoProducto,
+                                onDelete: _confirmarEliminarProducto,
+                              ),
+                              _ListaProductos(
+                                productos: comprados,
+                                tipo: _TipoLista.comprados,
+                                onToggle: _cambiarEstadoProducto,
+                                onDelete: _confirmarEliminarProducto,
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -305,6 +390,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+class _ProgresoComprasBanner extends StatelessWidget {
+  const _ProgresoComprasBanner({
+    required this.comprados,
+    required this.total,
+  });
+
+  final int comprados;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final porcentaje = total > 0 ? (comprados / total) : 0.0;
+    final completado = comprados == total && total > 0;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: completado ? const Color(0xFFBBE5D0) : const Color(0xFFE8E4DA),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                completado ? Icons.celebration_rounded : Icons.shopping_cart_checkout_rounded,
+                size: 20,
+                color: completado ? const Color(0xFF1E4D3E) : const Color(0xFF3D705F),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  completado
+                      ? '¡Todo comprado! La despensa está lista 🎉'
+                      : 'Progreso de compras: $comprados de $total listos',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: completado ? const Color(0xFF1E4D3E) : Colors.black87,
+                  ),
+                ),
+              ),
+              Text(
+                '${(porcentaje * 100).toInt()}%',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E4D3E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: porcentaje,
+              minHeight: 6,
+              backgroundColor: const Color(0xFFECEAE4),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                completado ? Colors.green : const Color(0xFF1E4D3E),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

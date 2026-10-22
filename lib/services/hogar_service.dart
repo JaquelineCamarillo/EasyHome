@@ -147,6 +147,13 @@ class HogarService {
     }
   }
 
+  /// Cierra la sesión del usuario actual.
+  Future<void> cerrarSesion() async {
+    try {
+      await _auth.signOut();
+    } catch (_) {}
+  }
+
   /// Documento del hogar en tiempo real (`null` si ya no existe).
   Stream<Hogar?> observarHogar(String hogarId) {
     return _db.collection('hogares').doc(hogarId).snapshots().map((snap) {
