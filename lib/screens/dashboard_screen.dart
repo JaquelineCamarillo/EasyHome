@@ -458,7 +458,7 @@ class _ProductoCard extends StatelessWidget {
                             : TextDecoration.none,
                       ),
                     ),
-                    if (producto.cantidad.isNotEmpty) ...[
+                    if (producto.cantidad > 0) ...[
                       const SizedBox(height: 3),
                       Row(
                         children: [

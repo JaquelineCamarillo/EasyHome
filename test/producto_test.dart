@@ -9,9 +9,9 @@ void main() {
       final data = {
         'hogarId': 'hogar123',
         'nombre': 'Leche entera',
-        'cantidad': '2 litros',
+        'cantidad': 2,
         'comprado': true,
-        'creadoPor': 'user456',
+        'agregadoPor': 'user456',
         'fechaCreacion': Timestamp.fromDate(ahora),
       };
 
@@ -20,8 +20,9 @@ void main() {
       expect(producto.id, 'prod1');
       expect(producto.hogarId, 'hogar123');
       expect(producto.nombre, 'Leche entera');
-      expect(producto.cantidad, '2 litros');
+      expect(producto.cantidad, 2);
       expect(producto.comprado, isTrue);
+      expect(producto.agregadoPor, 'user456');
       expect(producto.creadoPor, 'user456');
       expect(producto.fechaCreacion, ahora);
     });
@@ -33,9 +34,9 @@ void main() {
       expect(producto.id, 'prod2');
       expect(producto.hogarId, '');
       expect(producto.nombre, '');
-      expect(producto.cantidad, '');
+      expect(producto.cantidad, 1);
       expect(producto.comprado, isFalse);
-      expect(producto.creadoPor, isNull);
+      expect(producto.agregadoPor, isNull);
       expect(producto.fechaCreacion, isNull);
     });
 
@@ -45,14 +46,14 @@ void main() {
         id: 'p1',
         hogarId: 'h1',
         nombre: 'Huevos',
-        cantidad: '1 docena',
+        cantidad: 12,
         comprado: false,
         fechaCreacion: ahora,
       );
 
       final map = prod.toMap();
       expect(map['nombre'], 'Huevos');
-      expect(map['cantidad'], '1 docena');
+      expect(map['cantidad'], 12);
       expect(map['comprado'], isFalse);
 
       final modificado = prod.copyWith(comprado: true);
