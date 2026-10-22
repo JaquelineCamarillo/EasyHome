@@ -82,6 +82,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         productoId: producto.id,
         comprado: nuevoEstado,
       );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            nuevoEstado
+                ? '"${producto.nombre}" marcado como comprado'
+                : '"${producto.nombre}" movido a pendientes',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -423,6 +435,7 @@ class _ProductoCard extends StatelessWidget {
         ),
       ),
       child: InkWell(
+        key: Key('tile_${producto.id}'),
         borderRadius: BorderRadius.circular(16),
         onTap: onToggle,
         child: Padding(
