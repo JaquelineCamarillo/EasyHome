@@ -297,6 +297,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onPressed: () =>
                       Navigator.of(context).pushNamed(AppRoutes.perfilHogar),
                 ),
+                IconButton(
+                  key: const Key('boton_mi_perfil_dash'),
+                  tooltip: 'Mi perfil',
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFE8E4DA)),
+                    ),
+                    child: Icon(
+                      Icons.person_outline_rounded,
+                      size: 20,
+                      color: tema.colorScheme.primary,
+                    ),
+                  ),
+                  onPressed: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.editarPerfil),
+                ),
                 const SizedBox(width: 8),
               ],
               bottom: PreferredSize(

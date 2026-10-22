@@ -7,6 +7,7 @@ import 'routes.dart';
 import 'screens/agregar_producto_screen.dart';
 import 'screens/crear_unirse_hogar_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/editar_perfil_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/perfil_hogar_screen.dart';
 import 'screens/registro_screen.dart';
@@ -121,6 +122,7 @@ class EasyHomeApp extends StatelessWidget {
         AppRoutes.dashboard: (_) => const DashboardScreen(),
         AppRoutes.unirseHogar: (_) => const UnirseHogarScreen(),
         AppRoutes.perfilHogar: (_) => const PerfilHogarScreen(),
+        AppRoutes.editarPerfil: (_) => const EditarPerfilScreen(),
         AppRoutes.agregarProducto: (_) => const AgregarProductoScreen(),
       },
     );

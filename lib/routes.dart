@@ -7,4 +7,5 @@ class AppRoutes {
   static const perfilHogar = '/perfil-hogar'; // #7 Perfil del hogar
   static const dashboard = '/dashboard'; // Pantalla principal (compras + quehaceres)
   static const agregarProducto = '/agregar-producto'; // #10 Formulario agregar producto
+  static const editarPerfil = '/editar-perfil'; // Perfil y configuración de usuario
 }
