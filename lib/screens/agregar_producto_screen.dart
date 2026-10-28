@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../services/compras_service.dart';
 import '../services/hogar_service.dart';
+import '../utils/app_feedback.dart';
 import '../utils/validators.dart';
 
 /// Pantalla #10 — Formulario para agregar un nuevo producto a la lista de compras.
@@ -94,13 +95,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
       // Limpiar formulario antes de regresar
       _limpiarFormulario();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Producto agregado con éxito'),
-          backgroundColor: Color(0xFF234E3F),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      AppFeedback.mostrarExito(context, 'Producto agregado con éxito');
 
       // Regresar al dashboard (#9)
       Navigator.of(context).pop(true);

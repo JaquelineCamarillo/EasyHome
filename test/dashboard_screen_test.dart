@@ -172,6 +172,44 @@ void main() {
     expect(fakeCompras.nuevoEstadoActualizado, isTrue);
   });
 
+  testWidgets('un toque sobre la tarjeta del producto actualiza comprado a true y no lo elimina (#11)', (tester) async {
+    await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
+    await tester.pump();
+
+    fakeCompras.productosCtrl.add([_p1]);
+    await tester.pump();
+
+    // Tocar sobre la tarjeta completa (InkWell)
+    await tester.tap(find.byKey(Key('tile_${_p1.id}')));
+    await tester.pump();
+
+    expect(fakeCompras.productoIdActualizado, 'prod1');
+    expect(fakeCompras.nuevoEstadoActualizado, isTrue);
+
+    // Cuando Firestore emite el producto actualizado con comprado=true
+    final p1Comprado = _p1.copyWith(comprado: true);
+    fakeCompras.productosCtrl.add([p1Comprado]);
+    await tester.pump();
+
+    // En pendientes ya no está
+    expect(find.text('Manzanas'), findsNothing);
+    expect(find.text('Pendientes (0)'), findsOneWidget);
+    expect(find.text('Comprados (1)'), findsOneWidget);
+
+    // En comprados sí está (no fue eliminado)
+    await tester.tap(find.byKey(const Key('tab_comprados')));
+    await tester.pumpAndSettle();
+    expect(find.text('Manzanas'), findsOneWidget);
+    expect(find.text('Comprado'), findsOneWidget);
+
+    // Si se toca en la pestaña de comprados, se desmarca a false y regresa a pendientes
+    await tester.tap(find.byKey(Key('tile_${_p1.id}')));
+    await tester.pump();
+
+    expect(fakeCompras.productoIdActualizado, 'prod1');
+    expect(fakeCompras.nuevoEstadoActualizado, isFalse);
+  });
+
   testWidgets('botón (+) navega al formulario de agregar producto', (tester) async {
     await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
     await tester.pump();

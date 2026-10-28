@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 
 import '../models/hogar.dart';
 import '../models/integrante.dart';
+import '../routes.dart';
 import '../services/hogar_service.dart';
+import '../utils/app_feedback.dart';
 
 /// Pantalla #7 — Perfil del hogar: integrantes y código de invitación,
 /// escuchando Firestore en tiempo real.
@@ -56,12 +58,47 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
   Future<void> _copiarCodigo(String codigo) async {
     await Clipboard.setData(ClipboardData(text: codigo));
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(
-        content: Text('Código copiado'),
-        duration: Duration(seconds: 2),
-      ));
+    AppFeedback.mostrarExito(context, 'Código copiado');
+  }
+
+  Future<void> _confirmarCerrarSesion() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: Color(0xFFC24134)),
+            SizedBox(width: 8),
+            Text(
+              'Cerrar sesión',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: const Text(
+          '¿Estás seguro de que deseas salir de tu cuenta?',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC24134)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true && mounted) {
+      await _hogares.cerrarSesion();
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
+    }
   }
 
   @override
@@ -70,6 +107,14 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         scrolledUnderElevation: 0,
+        actions: [
+          IconButton(
+            key: const Key('boton_cerrar_sesion'),
+            tooltip: 'Cerrar sesión',
+            icon: const Icon(Icons.logout_rounded, color: Colors.black54),
+            onPressed: _confirmarCerrarSesion,
+          ),
+        ],
       ),
       body: SafeArea(child: _cuerpo(context)),
     );

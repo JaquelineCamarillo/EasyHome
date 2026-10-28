@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
@@ -16,11 +17,18 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint(
       '✅ Firebase conectado: ${Firebase.apps.length} app(s), proyecto: ${Firebase.apps.first.options.projectId}');
-  runApp(const EasyHomeApp());
+
+  final usuarioActual = FirebaseAuth.instance.currentUser;
+  final rutaInicial =
+      usuarioActual != null ? AppRoutes.dashboard : AppRoutes.registro;
+
+  runApp(EasyHomeApp(initialRoute: rutaInicial));
 }
 
 class EasyHomeApp extends StatelessWidget {
-  const EasyHomeApp({super.key});
+  const EasyHomeApp({super.key, this.initialRoute = AppRoutes.registro});
+
+  final String initialRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +113,7 @@ class EasyHomeApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: AppRoutes.registro,
+      initialRoute: initialRoute,
       routes: {
         AppRoutes.registro: (_) => const RegistroScreen(),
         AppRoutes.login: (_) => const LoginScreen(),

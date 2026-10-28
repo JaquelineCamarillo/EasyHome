@@ -84,6 +84,27 @@ class _RegistroScreenState extends State<RegistroScreen> {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
+    final passText = _contrasenaCtrl.text;
+    final tieneMin6 = Validators.tieneMinimo6(passText);
+    final tieneLetra = Validators.tieneLetra(passText);
+    final tieneNum = Validators.tieneNumero(passText);
+    final nivelSeguridad = Validators.nivelSeguridadContrasena(passText);
+
+    Color colorSeguridad;
+    String textoSeguridad;
+    if (nivelSeguridad < 0.4) {
+      colorSeguridad = Colors.redAccent;
+      textoSeguridad = 'Débil';
+    } else if (nivelSeguridad < 0.75) {
+      colorSeguridad = Colors.amber.shade700;
+      textoSeguridad = 'Media';
+    } else {
+      colorSeguridad = const Color(0xFF1E4D3E);
+      textoSeguridad = 'Fuerte';
+    }
+
+    final coincide = _confirmarCtrl.text.isNotEmpty &&
+        _confirmarCtrl.text == _contrasenaCtrl.text;
 
     return Scaffold(
       body: SafeArea(
@@ -225,6 +246,53 @@ class _RegistroScreenState extends State<RegistroScreen> {
                           validator: Validators.contrasena,
                           onChanged: (_) => _alCambiarContrasena(),
                         ),
+                        if (passText.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: nivelSeguridad,
+                                    backgroundColor: const Color(0xFFECEAE4),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        colorSeguridad),
+                                    minHeight: 5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                textoSeguridad,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorSeguridad,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              _RequisitoChip(
+                                texto: '6+ caracteres',
+                                cumplido: tieneMin6,
+                              ),
+                              _RequisitoChip(
+                                texto: 'Letras',
+                                cumplido: tieneLetra,
+                              ),
+                              _RequisitoChip(
+                                texto: 'Números',
+                                cumplido: tieneNum,
+                              ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 16),
                         TextFormField(
                           key: _confirmarKey,
@@ -236,8 +304,16 @@ class _RegistroScreenState extends State<RegistroScreen> {
                             labelText: 'Confirmar contraseña',
                             prefixIcon: Icon(
                               Icons.check_circle_outline_rounded,
-                              color: tema.colorScheme.primary,
+                              color: coincide
+                                  ? const Color(0xFF1E4D3E)
+                                  : tema.colorScheme.primary,
                             ),
+                            suffixIcon: coincide
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    color: Color(0xFF1E4D3E),
+                                  )
+                                : null,
                           ),
                           validator: (v) => Validators.confirmarContrasena(
                               v, _contrasenaCtrl.text),
@@ -252,6 +328,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
                             decoration: BoxDecoration(
                               color: tema.colorScheme.error.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: tema.colorScheme.error.withValues(alpha: 0.25),
+                              ),
                             ),
                             child: Row(
                               children: [
@@ -324,6 +403,52 @@ class _RegistroScreenState extends State<RegistroScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _RequisitoChip extends StatelessWidget {
+  const _RequisitoChip({
+    required this.texto,
+    required this.cumplido,
+  });
+
+  final String texto;
+  final bool cumplido;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: cumplido
+            ? const Color(0xFF1E4D3E).withValues(alpha: 0.12)
+            : const Color(0xFFEDEAE2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: cumplido ? const Color(0xFF1E4D3E) : const Color(0xFFDDD8CE),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            cumplido ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            size: 13,
+            color: cumplido ? const Color(0xFF1E4D3E) : Colors.black45,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            texto,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: cumplido ? FontWeight.bold : FontWeight.normal,
+              color: cumplido ? const Color(0xFF1E4D3E) : Colors.black54,
+            ),
+          ),
+        ],
       ),
     );
   }
