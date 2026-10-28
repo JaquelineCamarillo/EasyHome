@@ -8,17 +8,20 @@ class Producto {
     required this.nombre,
     required this.cantidad,
     this.comprado = false,
-    this.creadoPor,
+    this.agregadoPor,
     this.fechaCreacion,
   });
 
   final String id;
   final String hogarId;
   final String nombre;
-  final String cantidad;
+  final int cantidad;
   final bool comprado;
-  final String? creadoPor;
+  final String? agregadoPor;
   final DateTime? fechaCreacion;
+
+  /// Compatibilidad hacia atrás si algún componente busca `creadoPor`.
+  String? get creadoPor => agregadoPor;
 
   factory Producto.fromMap(String id, Map<String, dynamic> data) {
     DateTime? fecha;
@@ -29,13 +32,23 @@ class Producto {
       fecha = rawFecha;
     }
 
+    int cant = 1;
+    final rawCant = data['cantidad'];
+    if (rawCant is int) {
+      cant = rawCant;
+    } else if (rawCant is num) {
+      cant = rawCant.toInt();
+    } else if (rawCant is String) {
+      cant = int.tryParse(rawCant) ?? 1;
+    }
+
     return Producto(
       id: id,
       hogarId: (data['hogarId'] as String?) ?? '',
       nombre: (data['nombre'] as String?) ?? '',
-      cantidad: (data['cantidad']?.toString()) ?? '',
+      cantidad: cant,
       comprado: (data['comprado'] as bool?) ?? false,
-      creadoPor: data['creadoPor'] as String?,
+      agregadoPor: (data['agregadoPor'] as String?) ?? (data['creadoPor'] as String?),
       fechaCreacion: fecha,
     );
   }
@@ -46,7 +59,7 @@ class Producto {
       'nombre': nombre,
       'cantidad': cantidad,
       'comprado': comprado,
-      if (creadoPor != null) 'creadoPor': creadoPor,
+      if (agregadoPor != null) 'agregadoPor': agregadoPor,
       if (fechaCreacion != null)
         'fechaCreacion': Timestamp.fromDate(fechaCreacion!),
     };
@@ -56,9 +69,9 @@ class Producto {
     String? id,
     String? hogarId,
     String? nombre,
-    String? cantidad,
+    int? cantidad,
     bool? comprado,
-    String? creadoPor,
+    String? agregadoPor,
     DateTime? fechaCreacion,
   }) {
     return Producto(
@@ -67,7 +80,7 @@ class Producto {
       nombre: nombre ?? this.nombre,
       cantidad: cantidad ?? this.cantidad,
       comprado: comprado ?? this.comprado,
-      creadoPor: creadoPor ?? this.creadoPor,
+      agregadoPor: agregadoPor ?? this.agregadoPor,
       fechaCreacion: fechaCreacion ?? this.fechaCreacion,
     );
   }

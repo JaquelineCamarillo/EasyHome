@@ -44,15 +44,20 @@ class Validators {
     return null;
   }
 
-  /// Nombre del producto: obligatorio.
+  /// Nombre del producto: obligatorio y no vacío.
   static String? nombreProducto(String? value) {
     if ((value ?? '').trim().isEmpty) return 'Ingresa el nombre del producto';
     return null;
   }
 
-  /// Cantidad del producto: obligatoria.
+  /// Cantidad del producto: número entero mayor a 0.
   static String? cantidadProducto(String? value) {
-    if ((value ?? '').trim().isEmpty) return 'Ingresa la cantidad';
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty) return 'Ingresa la cantidad';
+    final numero = int.tryParse(texto);
+    if (numero == null || numero <= 0) {
+      return 'La cantidad debe ser un número entero mayor a 0';
+    }
     return null;
   }
 }

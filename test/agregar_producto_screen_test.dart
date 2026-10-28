@@ -7,13 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 class FakeAgregarComprasService extends ComprasService {
   String? hogarIdRecibido;
   String? nombreRecibido;
-  String? cantidadRecibida;
+  int? cantidadRecibida;
 
   @override
   Future<String> agregarProducto({
     required String hogarId,
     required String nombre,
-    required String cantidad,
+    required int cantidad,
   }) async {
     hogarIdRecibido = hogarId;
     nombreRecibido = nombre;
@@ -55,41 +55,92 @@ void main() {
     fakeHogares = FakeAgregarHogarService();
   });
 
-  testWidgets('con campos vacíos muestra validación y no llama al servicio', (tester) async {
+  testWidgets('la cantidad inicia con valor por defecto 1', (tester) async {
     await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
 
-    await tester.tap(find.byKey(const Key('boton_guardar_producto')));
+    final formField = tester.widget<TextFormField>(
+        find.byKey(const Key('campo_cantidad_producto')));
+    expect(formField.controller?.text, '1');
+  });
+
+  testWidgets('nombre vacío no permite guardar', (tester) async {
+    await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
+
+    // Intentar guardar con nombre vacío
+    await tester.tap(find.byKey(const Key('boton_agregar')));
     await tester.pump();
 
     expect(find.text('Ingresa el nombre del producto'), findsOneWidget);
+    expect(fakeCompras.hogarIdRecibido, isNull);
+  });
+
+  testWidgets('cantidad inválida (0 o vacía) no permite guardar', (tester) async {
+    await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
+
+    await tester.enterText(
+        find.byKey(const Key('campo_nombre_producto')), 'Manzanas');
+
+    // Cantidad 0
+    await tester.enterText(
+        find.byKey(const Key('campo_cantidad_producto')), '0');
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('boton_agregar')));
+    await tester.pump();
+
+    expect(
+        find.text('La cantidad debe ser un número entero mayor a 0'),
+        findsOneWidget);
+    expect(fakeCompras.hogarIdRecibido, isNull);
+
+    // Cantidad vacía
+    await tester.enterText(
+        find.byKey(const Key('campo_cantidad_producto')), '');
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('boton_agregar')));
+    await tester.pump();
+
     expect(find.text('Ingresa la cantidad'), findsOneWidget);
     expect(fakeCompras.hogarIdRecibido, isNull);
   });
 
-  testWidgets('tocar un chip de sugerencia rellena el campo de cantidad', (tester) async {
+  testWidgets('botones de incremento y decremento ajustan la cantidad', (tester) async {
     await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
 
-    await tester.tap(find.text('1 kg'));
-    await tester.pump();
+    final formField = tester.widget<TextFormField>(
+        find.byKey(const Key('campo_cantidad_producto')));
+    expect(formField.controller?.text, '1');
 
-    expect(find.text('1 kg'), findsNWidgets(2)); // En el chip y en el input
+    await tester.tap(find.byKey(const Key('boton_incrementar_cantidad')));
+    await tester.pump();
+    expect(formField.controller?.text, '2');
+
+    await tester.tap(find.byKey(const Key('boton_decrementar_cantidad')));
+    await tester.pump();
+    expect(formField.controller?.text, '1');
+
+    // No debe bajar de 1
+    await tester.tap(find.byKey(const Key('boton_decrementar_cantidad')));
+    await tester.pump();
+    expect(formField.controller?.text, '1');
   });
 
-  testWidgets('datos válidos guardan el producto correctamente', (tester) async {
+  testWidgets('datos válidos guardan el producto correctamente con entero', (tester) async {
     await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
 
     await tester.enterText(
         find.byKey(const Key('campo_nombre_producto')), 'Café en grano');
     await tester.enterText(
-        find.byKey(const Key('campo_cantidad_producto')), '500 gr');
+        find.byKey(const Key('campo_cantidad_producto')), '3');
     await tester.pump();
 
-    await tester.tap(find.byKey(const Key('boton_guardar_producto')));
+    await tester.tap(find.byKey(const Key('boton_agregar')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(fakeCompras.hogarIdRecibido, 'hogar-1');
     expect(fakeCompras.nombreRecibido, 'Café en grano');
-    expect(fakeCompras.cantidadRecibida, '500 gr');
+    expect(fakeCompras.cantidadRecibida, 3);
   });
 }

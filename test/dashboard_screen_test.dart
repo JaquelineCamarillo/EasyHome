@@ -38,7 +38,7 @@ final _p1 = Producto(
   id: 'prod1',
   hogarId: 'h1',
   nombre: 'Manzanas',
-  cantidad: '1 kg',
+  cantidad: 1,
   comprado: false,
   fechaCreacion: DateTime(2026, 10, 21, 10, 0),
 );
@@ -47,7 +47,7 @@ final _p2 = Producto(
   id: 'prod2',
   hogarId: 'h1',
   nombre: 'Leche',
-  cantidad: '2 litros',
+  cantidad: 2,
   comprado: true,
   fechaCreacion: DateTime(2026, 10, 21, 9, 0),
 );
@@ -116,7 +116,7 @@ void main() {
 
     // En tab pendientes: se muestra Manzanas y su cantidad
     expect(find.text('Manzanas'), findsOneWidget);
-    expect(find.text('Cantidad: 1 kg'), findsOneWidget);
+    expect(find.text('Cantidad: 1'), findsOneWidget);
     expect(find.text('Leche'), findsNothing);
 
     // Cambiar a la pestaña de comprados
@@ -125,7 +125,7 @@ void main() {
 
     // En tab comprados: se muestra Leche, su cantidad y etiqueta de Comprado
     expect(find.text('Leche'), findsOneWidget);
-    expect(find.text('Cantidad: 2 litros'), findsOneWidget);
+    expect(find.text('Cantidad: 2'), findsOneWidget);
     expect(find.text('Comprado'), findsOneWidget);
   });
 
@@ -144,7 +144,7 @@ void main() {
       id: 'prod3',
       hogarId: 'h1',
       nombre: 'Pan integral',
-      cantidad: '1 bolsa',
+      cantidad: 3,
       comprado: false,
       fechaCreacion: DateTime(2026, 10, 21, 11, 0),
     );

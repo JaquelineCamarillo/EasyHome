@@ -71,19 +71,19 @@ class ComprasService {
     }
   }
 
-  /// Agrega un nuevo producto a la lista de compras del hogar.
+  /// Agrega un nuevo producto a la lista de compras del hogar (#10).
   Future<String> agregarProducto({
     required String hogarId,
     required String nombre,
-    required String cantidad,
+    required int cantidad,
   }) async {
     try {
       final docRef = await _db.collection('productos').add({
         'hogarId': hogarId,
         'nombre': nombre.trim(),
-        'cantidad': cantidad.trim(),
+        'cantidad': cantidad,
         'comprado': false,
-        'creadoPor': _auth.currentUser?.uid,
+        'agregadoPor': _auth.currentUser?.uid,
         'fechaCreacion': FieldValue.serverTimestamp(),
       });
       return docRef.id;
