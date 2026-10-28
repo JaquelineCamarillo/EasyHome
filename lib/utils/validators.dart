@@ -43,4 +43,16 @@ class Validators {
     }
     return null;
   }
+
+  /// Nombre del producto: obligatorio.
+  static String? nombreProducto(String? value) {
+    if ((value ?? '').trim().isEmpty) return 'Ingresa el nombre del producto';
+    return null;
+  }
+
+  /// Cantidad del producto: obligatoria.
+  static String? cantidadProducto(String? value) {
+    if ((value ?? '').trim().isEmpty) return 'Ingresa la cantidad';
+    return null;
+  }
 }

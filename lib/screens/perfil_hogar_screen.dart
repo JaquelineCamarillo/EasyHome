@@ -152,7 +152,10 @@ class _ListaIntegrantes extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(
                   'Integrantes (${integrantes.length})',
-                  style: Theme.of(context).textTheme.titleSmall,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black54,
+                      ),
                 ),
               );
             }
@@ -175,24 +178,37 @@ class _IntegranteTile extends StatelessWidget {
     final inicial = integrante.nombre.characters.first.toUpperCase();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8E4DA)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           CircleAvatar(
             backgroundColor: tema.colorScheme.primary,
             foregroundColor: Colors.white,
-            child: Text(inicial),
+            child: Text(
+              inicial,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               integrante.nombre,
-              style: tema.textTheme.titleMedium,
+              style: tema.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -201,19 +217,21 @@ class _IntegranteTile extends StatelessWidget {
               key: const Key('etiqueta_admin'),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFF6E3C3),
+                color: const Color(0xFFFBF1DE),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE8BA6E)),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.star_rounded, size: 16, color: Color(0xFF9A5B00)),
+                  Icon(Icons.star_rounded, size: 16, color: Color(0xFFB57000)),
                   SizedBox(width: 4),
                   Text(
                     'Admin',
                     style: TextStyle(
-                      color: Color(0xFF9A5B00),
+                      color: Color(0xFFB57000),
                       fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -241,7 +259,14 @@ class _CodigoInvitacionBox extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
       decoration: BoxDecoration(
         color: tema.colorScheme.primary,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: tema.colorScheme.primary.withValues(alpha: 0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Row(
         children: [
