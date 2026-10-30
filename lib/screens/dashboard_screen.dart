@@ -5,6 +5,7 @@ import '../routes.dart';
 import '../services/compras_service.dart';
 import '../services/hogar_service.dart';
 import '../utils/app_feedback.dart';
+import '../utils/validators.dart';
 
 /// Pantalla #9 — Dashboard de compras en tiempo real.
 class DashboardScreen extends StatefulWidget {
@@ -148,6 +149,279 @@ class _DashboardScreenState extends State<DashboardScreen> {
         AppFeedback.mostrarError(context, ComprasService.msgSinConexion);
       }
     }
+  }
+
+  Future<void> _mostrarMenuOpciones(Producto producto) async {
+    final opcion = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Text(
+                  producto.nombre,
+                  key: const Key('titulo_menu_opciones'),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E2D27),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                key: const Key('opcion_editar'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F1EC),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.edit_outlined,
+                    color: Color(0xFF234E3F),
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'Editar',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+                subtitle: const Text('Modificar nombre y cantidad'),
+                onTap: () => Navigator.of(ctx).pop('editar'),
+              ),
+              ListTile(
+                key: const Key('opcion_eliminar'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDE8E6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFC24134),
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'Eliminar',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: Color(0xFFC24134),
+                  ),
+                ),
+                subtitle: const Text('Quitar este producto de la lista'),
+                onTap: () => Navigator.of(ctx).pop('eliminar'),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || opcion == null) return;
+
+    if (opcion == 'editar') {
+      await _mostrarFormularioEditar(producto);
+    } else if (opcion == 'eliminar') {
+      await _confirmarEliminarProducto(producto);
+    }
+  }
+
+  Future<void> _mostrarFormularioEditar(Producto producto) async {
+    final formKey = GlobalKey<FormState>();
+    final nombreCtrl = TextEditingController(text: producto.nombre);
+    final cantidadCtrl =
+        TextEditingController(text: producto.cantidad.toString());
+    bool guardando = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          void ajustarCantidad(int delta) {
+            final actual = int.tryParse(cantidadCtrl.text) ?? 1;
+            final nuevo = actual + delta;
+            if (nuevo >= 1) {
+              setModalState(() {
+                cantidadCtrl.text = nuevo.toString();
+              });
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: Material(
+              color: Colors.white,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.black12,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const Row(
+                        children: [
+                          Icon(Icons.edit_note_rounded,
+                              color: Color(0xFF234E3F), size: 26),
+                          SizedBox(width: 8),
+                          Text(
+                            'Editar producto',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E2D27),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      TextFormField(
+                        key: const Key('campo_editar_nombre_producto'),
+                        controller: nombreCtrl,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre del producto',
+                          prefixIcon: Icon(Icons.shopping_bag_outlined),
+                        ),
+                        validator: Validators.nombreProducto,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          IconButton.filledTonal(
+                            key: const Key(
+                                'boton_decrementar_cantidad_edicion'),
+                            tooltip: 'Reducir cantidad',
+                            icon: const Icon(Icons.remove_rounded),
+                            onPressed: () => ajustarCantidad(-1),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextFormField(
+                              key: const Key(
+                                  'campo_editar_cantidad_producto'),
+                              controller: cantidadCtrl,
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              decoration: const InputDecoration(
+                                labelText: 'Cantidad',
+                                prefixIcon: Icon(Icons.numbers_rounded),
+                              ),
+                              validator: Validators.cantidadProducto,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          IconButton.filledTonal(
+                            key: const Key(
+                                'boton_incrementar_cantidad_edicion'),
+                            tooltip: 'Aumentar cantidad',
+                            icon: const Icon(Icons.add_rounded),
+                            onPressed: () => ajustarCantidad(1),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        key: const Key('boton_guardar_edicion'),
+                        onPressed: guardando
+                            ? null
+                            : () async {
+                                if (!(formKey.currentState?.validate() ??
+                                    false)) {
+                                  return;
+                                }
+                                final nuevaCantidad =
+                                    int.tryParse(cantidadCtrl.text.trim()) ?? 1;
+                                final nuevoNombre = nombreCtrl.text.trim();
+
+                                setModalState(() => guardando = true);
+                                try {
+                                  await _compras.editarProducto(
+                                    productoId: producto.id,
+                                    nombre: nuevoNombre,
+                                    cantidad: nuevaCantidad,
+                                  );
+                                  if (!ctx.mounted) return;
+                                  Navigator.of(ctx).pop();
+                                  if (!mounted) return;
+                                  AppFeedback.mostrarExito(
+                                    context,
+                                    'Producto actualizado con éxito',
+                                  );
+                                } catch (_) {
+                                  if (!ctx.mounted) return;
+                                  setModalState(() => guardando = false);
+                                  AppFeedback.mostrarError(
+                                    ctx,
+                                    ComprasService.msgErrorActualizar,
+                                  );
+                                }
+                              },
+                        child: guardando
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Guardar cambios'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _irAAgregarProducto() {
@@ -380,12 +654,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 tipo: _TipoLista.pendientes,
                                 onToggle: _cambiarEstadoProducto,
                                 onDelete: _confirmarEliminarProducto,
+                                onLongPress: _mostrarMenuOpciones,
                               ),
                               _ListaProductos(
                                 productos: comprados,
                                 tipo: _TipoLista.comprados,
                                 onToggle: _cambiarEstadoProducto,
                                 onDelete: _confirmarEliminarProducto,
+                                onLongPress: _mostrarMenuOpciones,
                               ),
                             ],
                           ),
@@ -502,12 +778,14 @@ class _ListaProductos extends StatelessWidget {
     required this.tipo,
     required this.onToggle,
     required this.onDelete,
+    required this.onLongPress,
   });
 
   final List<Producto> productos;
   final _TipoLista tipo;
   final ValueChanged<Producto> onToggle;
   final ValueChanged<Producto> onDelete;
+  final ValueChanged<Producto> onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -570,6 +848,7 @@ class _ListaProductos extends StatelessWidget {
           producto: producto,
           onToggle: () => onToggle(producto),
           onDelete: () => onDelete(producto),
+          onLongPress: () => onLongPress(producto),
         );
       },
     );
@@ -581,11 +860,13 @@ class _ProductoCard extends StatelessWidget {
     required this.producto,
     required this.onToggle,
     required this.onDelete,
+    required this.onLongPress,
   });
 
   final Producto producto;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
+  final VoidCallback onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -607,6 +888,7 @@ class _ProductoCard extends StatelessWidget {
         key: Key('tile_${producto.id}'),
         borderRadius: BorderRadius.circular(16),
         onTap: onToggle,
+        onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
