@@ -122,15 +122,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         content: Text(
-          '¿Deseas eliminar "${producto.nombre}" de la lista de compras?',
+          '¿Seguro que quieres eliminar este producto ("${producto.nombre}")?',
+          key: const Key('mensaje_confirmar_eliminar'),
           style: const TextStyle(fontSize: 14),
         ),
         actions: [
           TextButton(
+            key: const Key('boton_cancelar_eliminar'),
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Cancelar'),
           ),
           FilledButton(
+            key: const Key('boton_confirmar_eliminar'),
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC24134)),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Eliminar'),
