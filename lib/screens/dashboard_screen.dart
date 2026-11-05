@@ -760,6 +760,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _cambiarEstadoQuehacer(
+      Quehacer quehacer, String nombreResponsable) async {
+    final uidActual =
+        widget.usuarioActualId ?? _usuarios.usuarioActualId ?? '';
+
+    if (quehacer.asignadoA != uidActual) {
+      AppFeedback.mostrarInfo(
+          context, 'Solo $nombreResponsable puede marcar este quehacer');
+      return;
+    }
+
+    final nuevoEstado = !quehacer.hecho;
+    try {
+      await _quehaceres.marcarHecho(
+        quehacerId: quehacer.id,
+        asignadoA: quehacer.asignadoA,
+        nuevoEstado: nuevoEstado,
+        uidActual: uidActual,
+      );
+      if (!mounted) return;
+      AppFeedback.mostrarExito(
+        context,
+        nuevoEstado ? 'Quehacer completado' : 'Quehacer pendiente',
+      );
+    } on QuehaceresException catch (e) {
+      if (!mounted) return;
+      AppFeedback.mostrarError(context, e.mensaje);
+    } catch (_) {
+      if (!mounted) return;
+      AppFeedback.mostrarError(
+          context, QuehaceresService.msgErrorActualizar);
+    }
+  }
+
   Widget _buildVistaQuehaceres(ThemeData tema, String hogarId) {
     final uidActual = widget.usuarioActualId ?? _usuarios.usuarioActualId ?? '';
 
@@ -983,6 +1017,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 final q = lista[index];
                                 final responsable =
                                     integrantesMap[q.asignadoA] ?? 'Integrante';
+                                final esResponsable = (q.asignadoA == uidActual);
 
                                 return Card(
                                   key: Key('item_quehacer_${q.id}'),
@@ -992,141 +1027,196 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     side: const BorderSide(
                                         color: Color(0xFFE8E4DA)),
                                   ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Wrap(
-                                          alignment: WrapAlignment.spaceBetween,
-                                          crossAxisAlignment:
-                                              WrapCrossAlignment.center,
-                                          spacing: 8,
-                                          runSpacing: 4,
-                                          children: [
-                                            Text(
-                                              q.titulo,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () => _cambiarEstadoQuehacer(
+                                        q, responsable),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 2),
+                                            child: Checkbox(
                                               key: Key(
-                                                  'titulo_quehacer_${q.id}'),
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                decoration: q.hecho
-                                                    ? TextDecoration.lineThrough
-                                                    : null,
-                                                color: q.hecho
-                                                    ? Colors.black45
-                                                    : const Color(0xFF1E2D27),
-                                              ),
+                                                  'checkbox_quehacer_${q.id}'),
+                                              value: q.hecho,
+                                              activeColor:
+                                                  const Color(0xFF234E3F),
+                                              onChanged: esResponsable
+                                                  ? (_) =>
+                                                      _cambiarEstadoQuehacer(
+                                                          q, responsable)
+                                                  : null,
                                             ),
-                                            Container(
-                                              key: Key('badge_estado_${q.id}'),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: q.hecho
-                                                    ? const Color(0xFFE8F1EC)
-                                                    : const Color(0xFFFEF3C7),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              child: Wrap(
-                                                crossAxisAlignment:
-                                                    WrapCrossAlignment.center,
-                                                spacing: 4,
-                                                children: [
-                                                  Icon(
-                                                    q.hecho
-                                                        ? Icons
-                                                            .check_circle_rounded
-                                                        : Icons
-                                                            .pending_actions_rounded,
-                                                    size: 16,
-                                                    color: q.hecho
-                                                        ? const Color(0xFF234E3F)
-                                                        : const Color(
-                                                            0xFFB45309),
-                                                  ),
-                                                  Text(
-                                                    q.hecho
-                                                        ? 'Hecho'
-                                                        : 'Pendiente',
-                                                    key: Key(
-                                                        'texto_estado_${q.id}'),
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: q.hecho
-                                                          ? const Color(
-                                                              0xFF234E3F)
-                                                          : const Color(
-                                                              0xFFB45309),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Wrap(
-                                          spacing: 16,
-                                          runSpacing: 6,
-                                          crossAxisAlignment:
-                                              WrapCrossAlignment.center,
-                                          children: [
-                                            Wrap(
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
                                               crossAxisAlignment:
-                                                  WrapCrossAlignment.center,
-                                              spacing: 4,
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                const Icon(
-                                                  Icons.person_outline_rounded,
-                                                  size: 16,
-                                                  color: Colors.black54,
+                                                Wrap(
+                                                  alignment: WrapAlignment
+                                                      .spaceBetween,
+                                                  crossAxisAlignment:
+                                                      WrapCrossAlignment
+                                                          .center,
+                                                  spacing: 8,
+                                                  runSpacing: 4,
+                                                  children: [
+                                                    Text(
+                                                      q.titulo,
+                                                      key: Key(
+                                                          'titulo_quehacer_${q.id}'),
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        decoration: q.hecho
+                                                            ? TextDecoration
+                                                                .lineThrough
+                                                            : null,
+                                                        color: q.hecho
+                                                            ? Colors.black45
+                                                            : const Color(
+                                                                0xFF1E2D27),
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      key: Key(
+                                                          'badge_estado_${q.id}'),
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 4),
+                                                      decoration:
+                                                          BoxDecoration(
+                                                        color: q.hecho
+                                                            ? const Color(
+                                                                0xFFE8F1EC)
+                                                            : const Color(
+                                                                0xFFFEF3C7),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                      ),
+                                                      child: Wrap(
+                                                        crossAxisAlignment:
+                                                            WrapCrossAlignment
+                                                                .center,
+                                                        spacing: 4,
+                                                        children: [
+                                                          Icon(
+                                                            q.hecho
+                                                                ? Icons
+                                                                    .check_circle_rounded
+                                                                : Icons
+                                                                    .pending_actions_rounded,
+                                                            size: 16,
+                                                            color: q.hecho
+                                                                ? const Color(
+                                                                    0xFF234E3F)
+                                                                : const Color(
+                                                                    0xFFB45309),
+                                                          ),
+                                                          Text(
+                                                            q.hecho
+                                                                ? 'Hecho'
+                                                                : 'Pendiente',
+                                                            key: Key(
+                                                                'texto_estado_${q.id}'),
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color: q.hecho
+                                                                  ? const Color(
+                                                                      0xFF234E3F)
+                                                                  : const Color(
+                                                                      0xFFB45309),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                                Text(
-                                                  responsable,
-                                                  key: Key(
-                                                      'responsable_quehacer_${q.id}'),
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.black87,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
+                                                const SizedBox(height: 10),
+                                                Wrap(
+                                                  spacing: 16,
+                                                  runSpacing: 6,
+                                                  crossAxisAlignment:
+                                                      WrapCrossAlignment
+                                                          .center,
+                                                  children: [
+                                                    Wrap(
+                                                      crossAxisAlignment:
+                                                          WrapCrossAlignment
+                                                              .center,
+                                                      spacing: 4,
+                                                      children: [
+                                                        const Icon(
+                                                          Icons
+                                                              .person_outline_rounded,
+                                                          size: 16,
+                                                          color:
+                                                              Colors.black54,
+                                                        ),
+                                                        Text(
+                                                          responsable,
+                                                          key: Key(
+                                                              'responsable_quehacer_${q.id}'),
+                                                          style:
+                                                              const TextStyle(
+                                                            fontSize: 13,
+                                                            color:
+                                                                Colors.black87,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    if (q.fechaLimite != null)
+                                                      Wrap(
+                                                        crossAxisAlignment:
+                                                            WrapCrossAlignment
+                                                                .center,
+                                                        spacing: 4,
+                                                        children: [
+                                                          const Icon(
+                                                            Icons
+                                                                .calendar_today_outlined,
+                                                            size: 14,
+                                                            color:
+                                                                Colors.black54,
+                                                          ),
+                                                          Text(
+                                                            '${q.fechaLimite!.day.toString().padLeft(2, '0')}/${q.fechaLimite!.month.toString().padLeft(2, '0')}/${q.fechaLimite!.year}',
+                                                            key: Key(
+                                                                'fecha_quehacer_${q.id}'),
+                                                            style:
+                                                                const TextStyle(
+                                                              fontSize: 13,
+                                                              color: Colors
+                                                                  .black87,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
-                                            if (q.fechaLimite != null)
-                                              Wrap(
-                                                crossAxisAlignment:
-                                                    WrapCrossAlignment.center,
-                                                spacing: 4,
-                                                children: [
-                                                  const Icon(
-                                                    Icons
-                                                        .calendar_today_outlined,
-                                                    size: 14,
-                                                    color: Colors.black54,
-                                                  ),
-                                                  Text(
-                                                    '${q.fechaLimite!.day.toString().padLeft(2, '0')}/${q.fechaLimite!.month.toString().padLeft(2, '0')}/${q.fechaLimite!.year}',
-                                                    key: Key(
-                                                        'fecha_quehacer_${q.id}'),
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      color: Colors.black87,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                          ],
-                                        ),
-                                      ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );
