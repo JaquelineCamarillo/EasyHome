@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function miHogarId() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.hogarId;
+    }
+
+    function soyAdminDe(hid) {
+      let yo = get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+      return yo.hogarId == hid && yo.esAdministrador == true;
+    }
+
+    match /usuarios/{uid} {
+      allow read: if estaAutenticado();
+      allow create: if estaAutenticado() && request.auth.uid == uid;
+      allow update: if estaAutenticado() && request.auth.uid == uid;
+      // PROPUESTA DE REGLA ENDURECIDA (PENDIENTE DE PROBAR EN RULES PLAYGROUND):
+      // allow update: if estaAutenticado() && (
+      //   (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre','avatarColor']))
+      //   || (request.auth.uid == uid && resource.data.hogarId == null &&
+      //       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId','esAdministrador']) &&
+      //       (request.resource.data.esAdministrador == false ||
+      //        getAfter(/databases/$(database)/documents/hogares/$(request.resource.data.hogarId)).data.creadoPor == request.auth.uid))
+      //   || (request.auth.uid == uid && request.resource.data.hogarId == null && request.resource.data.esAdministrador == false &&
+      //       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId','esAdministrador']))
+      //   || (resource.data.hogarId != null && soyAdminDe(resource.data.hogarId) &&
+      //       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId','esAdministrador']) &&
+      //       (request.resource.data.hogarId == resource.data.hogarId || request.resource.data.hogarId == null))
+      // );
+      allow delete: if false;
+    }
+
+    match /hogares/{hogarId} {
+      allow read: if estaAutenticado() && miHogarId() == hogarId;
+      allow create: if estaAutenticado();
+      allow update: if estaAutenticado() && miHogarId() == hogarId;
+      allow delete: if false;
+    }
+
+    match /productos/{productoId} {
+      allow read: if estaAutenticado() && resource.data.hogarId == miHogarId();
+      allow create: if estaAutenticado() && request.resource.data.hogarId == miHogarId();
+      allow update, delete: if estaAutenticado() && resource.data.hogarId == miHogarId();
+    }
+
+    match /codigosInvitacion/{codigoId} {
+      allow read: if estaAutenticado();
+      allow create, update, delete: if estaAutenticado();
+    }
+
+    match /quehaceres/{quehacerId} {
+      allow read:   if estaAutenticado() && resource.data.hogarId == miHogarId();
+      allow create: if estaAutenticado()
+                    && soyAdminDe(request.resource.data.hogarId)
+                    && request.resource.data.creadoPor == request.auth.uid
+                    && request.resource.data.hecho == false;
+      allow update: if estaAutenticado() && (
+          (soyAdminDe(resource.data.hogarId) && request.resource.data.hogarId == resource.data.hogarId)
+          || (resource.data.asignadoA == request.auth.uid
+              && resource.data.hogarId == miHogarId()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hecho']))
+      );
+      allow delete: if estaAutenticado() && soyAdminDe(resource.data.hogarId);
+    }
+  }
+}
