@@ -71,6 +71,23 @@ class ComprasService {
     }
   }
 
+  /// Actualiza el nombre y cantidad de un producto existente (#12).
+  Future<void> editarProducto({
+    required String productoId,
+    required String nombre,
+    required int cantidad,
+  }) async {
+    try {
+      await _db.collection('productos').doc(productoId).update({
+        'nombre': nombre.trim(),
+        'cantidad': cantidad,
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('Firestore error al editar producto: ${e.code}');
+      throw const ComprasException(msgErrorActualizar);
+    }
+  }
+
   /// Agrega un nuevo producto a la lista de compras del hogar (#10).
   Future<String> agregarProducto({
     required String hogarId,

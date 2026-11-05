@@ -12,6 +12,9 @@ class FakeComprasService extends ComprasService {
   final productosCtrl = StreamController<List<Producto>>.broadcast();
   String? productoIdActualizado;
   bool? nuevoEstadoActualizado;
+  String? productoIdEditado;
+  String? nombreEditado;
+  int? cantidadEditada;
 
   @override
   Stream<List<Producto>> observarProductos(String hogarId) =>
@@ -24,6 +27,17 @@ class FakeComprasService extends ComprasService {
   }) async {
     productoIdActualizado = productoId;
     nuevoEstadoActualizado = comprado;
+  }
+
+  @override
+  Future<void> editarProducto({
+    required String productoId,
+    required String nombre,
+    required int cantidad,
+  }) async {
+    productoIdEditado = productoId;
+    nombreEditado = nombre;
+    cantidadEditada = cantidad;
   }
 }
 
@@ -234,5 +248,106 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Pantalla Perfil'), findsOneWidget);
+  });
+
+  testWidgets('mantener presionado abre menú de opciones (Editar y Eliminar)', (tester) async {
+    await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
+    await tester.pump();
+
+    fakeCompras.productosCtrl.add([_p1]);
+    await tester.pump();
+
+    // Long press sobre la tarjeta
+    await tester.longPress(find.byKey(Key('tile_${_p1.id}')));
+    await tester.pumpAndSettle();
+
+    // Menú de opciones visible
+    expect(find.byKey(const Key('titulo_menu_opciones')), findsOneWidget);
+    expect(find.byKey(const Key('opcion_editar')), findsOneWidget);
+    expect(find.byKey(const Key('opcion_eliminar')), findsOneWidget);
+    expect(find.text('Editar'), findsOneWidget);
+    expect(find.text('Eliminar'), findsOneWidget);
+  });
+
+  testWidgets('formulario de edición carga valores actuales y valida campos', (tester) async {
+    await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
+    await tester.pump();
+
+    fakeCompras.productosCtrl.add([_p1]);
+    await tester.pump();
+
+    // Abrir menú con long press
+    await tester.longPress(find.byKey(Key('tile_${_p1.id}')));
+    await tester.pumpAndSettle();
+
+    // Tocar opción "Editar"
+    await tester.tap(find.byKey(const Key('opcion_editar')));
+    await tester.pumpAndSettle();
+
+    // Formulario precargado con valores actuales
+    expect(find.text('Editar producto'), findsOneWidget);
+    final campoNombre = find.byKey(const Key('campo_editar_nombre_producto'));
+    final campoCantidad = find.byKey(const Key('campo_editar_cantidad_producto'));
+
+    expect(campoNombre, findsOneWidget);
+    expect(campoCantidad, findsOneWidget);
+    expect(tester.widget<TextFormField>(campoNombre).controller?.text, 'Manzanas');
+    expect(tester.widget<TextFormField>(campoCantidad).controller?.text, '1');
+
+    // Validación: nombre vacío no permite guardar
+    await tester.enterText(campoNombre, '');
+    await tester.tap(find.byKey(const Key('boton_guardar_edicion')));
+    await tester.pump();
+
+    expect(find.text('Ingresa el nombre del producto'), findsOneWidget);
+    expect(fakeCompras.productoIdEditado, isNull);
+
+    // Validación: cantidad inválida (0 o vacía) no permite guardar
+    await tester.enterText(campoNombre, 'Manzanas Rojas');
+    await tester.enterText(campoCantidad, '0');
+    await tester.tap(find.byKey(const Key('boton_guardar_edicion')));
+    await tester.pump();
+
+    expect(find.text('La cantidad debe ser un número entero mayor a 0'), findsOneWidget);
+    expect(fakeCompras.productoIdEditado, isNull);
+  });
+
+  testWidgets('guardar edición actualiza Firestore y se refleja en tiempo real', (tester) async {
+    await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
+    await tester.pump();
+
+    fakeCompras.productosCtrl.add([_p1]);
+    await tester.pump();
+
+    // Abrir menú y editar
+    await tester.longPress(find.byKey(Key('tile_${_p1.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('opcion_editar')));
+    await tester.pumpAndSettle();
+
+    // Modificar nombre y usar stepper para incrementar cantidad
+    await tester.enterText(find.byKey(const Key('campo_editar_nombre_producto')), 'Manzanas Verdes');
+    await tester.tap(find.byKey(const Key('boton_incrementar_cantidad_edicion')));
+    await tester.pump();
+
+    // Guardar cambios
+    await tester.tap(find.byKey(const Key('boton_guardar_edicion')));
+    await tester.pumpAndSettle();
+
+    // Verifica que se llamó al servicio con los datos editados
+    expect(fakeCompras.productoIdEditado, 'prod1');
+    expect(fakeCompras.nombreEditado, 'Manzanas Verdes');
+    expect(fakeCompras.cantidadEditada, 2);
+
+    // Simular actualización en tiempo real desde Firestore
+    final p1Editado = _p1.copyWith(nombre: 'Manzanas Verdes', cantidad: 2);
+    fakeCompras.productosCtrl.add([p1Editado]);
+    await tester.pump();
+    await tester.pump();
+
+    // El dashboard muestra de inmediato los nuevos valores
+    expect(find.text('Manzanas Verdes'), findsOneWidget);
+    expect(find.text('Cantidad: 2'), findsOneWidget);
+    expect(find.text('Manzanas'), findsNothing);
   });
 }
