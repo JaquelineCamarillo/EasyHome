@@ -15,6 +15,7 @@ class FakeComprasService extends ComprasService {
   String? productoIdEditado;
   String? nombreEditado;
   int? cantidadEditada;
+  String? productoIdEliminado;
 
   @override
   Stream<List<Producto>> observarProductos(String hogarId) =>
@@ -38,6 +39,11 @@ class FakeComprasService extends ComprasService {
     productoIdEditado = productoId;
     nombreEditado = nombre;
     cantidadEditada = cantidad;
+  }
+
+  @override
+  Future<void> eliminarProducto(String productoId) async {
+    productoIdEliminado = productoId;
   }
 }
 
@@ -349,5 +355,70 @@ void main() {
     expect(find.text('Manzanas Verdes'), findsOneWidget);
     expect(find.text('Cantidad: 2'), findsOneWidget);
     expect(find.text('Manzanas'), findsNothing);
+  });
+
+  testWidgets('desde el menú de opciones, cancelar la confirmación no elimina nada (#13)', (tester) async {
+    await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
+    await tester.pump();
+
+    fakeCompras.productosCtrl.add([_p1]);
+    await tester.pump();
+
+    // Mantener presionado para abrir el menú de opciones
+    await tester.longPress(find.byKey(Key('tile_${_p1.id}')));
+    await tester.pumpAndSettle();
+
+    // Tocar opción "Eliminar"
+    await tester.tap(find.byKey(const Key('opcion_eliminar')));
+    await tester.pumpAndSettle();
+
+    // Diálogo de confirmación visible
+    expect(find.text('Eliminar producto'), findsOneWidget);
+    expect(
+      find.textContaining('¿Seguro que quieres eliminar este producto'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('boton_cancelar_eliminar')), findsOneWidget);
+    expect(find.byKey(const Key('boton_confirmar_eliminar')), findsOneWidget);
+
+    // Cancelar la eliminación
+    await tester.tap(find.byKey(const Key('boton_cancelar_eliminar')));
+    await tester.pumpAndSettle();
+
+    // No se llamó al servicio y el producto sigue en pantalla
+    expect(fakeCompras.productoIdEliminado, isNull);
+    expect(find.text('Manzanas'), findsOneWidget);
+  });
+
+  testWidgets('desde el menú de opciones, confirmar elimina y desaparece en tiempo real (#13)', (tester) async {
+    await _montar(tester, fakeCompras: fakeCompras, fakeHogares: fakeHogares);
+    await tester.pump();
+
+    fakeCompras.productosCtrl.add([_p1]);
+    await tester.pump();
+
+    // Mantener presionado para abrir el menú de opciones
+    await tester.longPress(find.byKey(Key('tile_${_p1.id}')));
+    await tester.pumpAndSettle();
+
+    // Tocar opción "Eliminar"
+    await tester.tap(find.byKey(const Key('opcion_eliminar')));
+    await tester.pumpAndSettle();
+
+    // Confirmar eliminación
+    await tester.tap(find.byKey(const Key('boton_confirmar_eliminar')));
+    await tester.pumpAndSettle();
+
+    // Se llamó a eliminar en Firestore
+    expect(fakeCompras.productoIdEliminado, 'prod1');
+
+    // Firestore emite la lista vacía tras eliminarse
+    fakeCompras.productosCtrl.add([]);
+    await tester.pump();
+    await tester.pump();
+
+    // El producto desaparece de la lista y se muestra el estado vacío
+    expect(find.text('Manzanas'), findsNothing);
+    expect(find.byKey(const Key('mensaje_lista_vacia')), findsOneWidget);
   });
 }
