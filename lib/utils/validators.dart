@@ -64,6 +64,15 @@ class Validators {
     return null;
   }
 
+  /// Título del quehacer: obligatorio y no solo espacios (#17).
+  static String? tituloQuehacer(String? value) {
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty) return 'Ingresa el título del quehacer';
+    return null;
+  }
+
+  static String? titulo(String? value) => tituloQuehacer(value);
+
   // --- Indicadores visuales de formato de contraseña ---
   static bool tieneMinimo6(String? value) => (value ?? '').length >= 6;
   static bool tieneLetra(String? value) => RegExp(r'[a-zA-Z]').hasMatch(value ?? '');
