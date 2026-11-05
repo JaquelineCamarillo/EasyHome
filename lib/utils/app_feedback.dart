@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 /// Notificaciones y mensajes visuales atractivos para toda la app.
 class AppFeedback {
+  /// Duración breve (1.5 segundos) para no bloquear la pantalla ni interferir
+  /// con la siguiente acción del usuario (#14).
+  static const Duration duracionBreve = Duration(milliseconds: 1500);
+
   static void mostrarExito(BuildContext context, String mensaje) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -41,7 +45,7 @@ class AppFeedback {
               ),
             ],
           ),
-          duration: const Duration(seconds: 2),
+          duration: duracionBreve,
         ),
       );
   }
@@ -129,7 +133,7 @@ class AppFeedback {
               ),
             ],
           ),
-          duration: const Duration(seconds: 2),
+          duration: duracionBreve,
         ),
       );
   }

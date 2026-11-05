@@ -95,7 +95,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
       // Limpiar formulario antes de regresar
       _limpiarFormulario();
 
-      AppFeedback.mostrarExito(context, 'Producto agregado con éxito');
+      AppFeedback.mostrarExito(context, 'Producto agregado');
 
       // Regresar al dashboard (#9)
       Navigator.of(context).pop(true);

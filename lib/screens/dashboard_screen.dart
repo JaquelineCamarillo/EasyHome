@@ -97,8 +97,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       AppFeedback.mostrarExito(
         context,
         nuevoEstado
-            ? '"${producto.nombre}" marcado como comprado'
-            : '"${producto.nombre}" movido a pendientes',
+            ? 'Marcado como comprado'
+            : 'Movido a pendientes',
       );
     } catch (_) {
       if (!mounted) return;
@@ -146,7 +146,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       try {
         await _compras.eliminarProducto(producto.id);
         if (!mounted) return;
-        AppFeedback.mostrarInfo(context, 'Se eliminó "${producto.nombre}"');
+        AppFeedback.mostrarInfo(context, 'Producto eliminado');
       } catch (_) {
         if (!mounted) return;
         AppFeedback.mostrarError(context, ComprasService.msgSinConexion);
@@ -394,7 +394,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   if (!mounted) return;
                                   AppFeedback.mostrarExito(
                                     context,
-                                    'Producto actualizado con éxito',
+                                    'Producto actualizado',
                                   );
                                 } catch (_) {
                                   if (!ctx.mounted) return;
@@ -427,8 +427,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _irAAgregarProducto() {
-    Navigator.of(context).pushNamed(AppRoutes.agregarProducto);
+  Future<void> _irAAgregarProducto() async {
+    final agregado =
+        await Navigator.of(context).pushNamed(AppRoutes.agregarProducto);
+    if (agregado == true && mounted) {
+      AppFeedback.mostrarExito(context, 'Producto agregado');
+    }
   }
 
   @override
