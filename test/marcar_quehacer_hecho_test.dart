@@ -23,6 +23,9 @@ class FakeQuehaceresMarcarService extends QuehaceresService {
       quehaceresCtrl.stream;
 
   @override
+  Future<int> rotarSiCorresponde(String hogarId, {DateTime? ahora}) async => 0;
+
+  @override
   Future<void> marcarHecho({
     required String quehacerId,
     required String asignadoA,

@@ -10,6 +10,7 @@ class Quehacer {
     this.hecho = false,
     required this.creadoPor,
     this.fechaLimite,
+    this.recurrente = false,
   });
 
   final String id;
@@ -19,6 +20,7 @@ class Quehacer {
   final bool hecho;
   final String creadoPor;
   final DateTime? fechaLimite;
+  final bool recurrente;
 
   factory Quehacer.fromMap(String id, Map<String, dynamic> data) {
     DateTime? fecha;
@@ -37,6 +39,7 @@ class Quehacer {
       hecho: (data['hecho'] as bool?) ?? false,
       creadoPor: (data['creadoPor'] as String?) ?? '',
       fechaLimite: fecha,
+      recurrente: (data['recurrente'] as bool?) ?? false,
     );
   }
 
@@ -48,6 +51,7 @@ class Quehacer {
       'hecho': hecho,
       'creadoPor': creadoPor,
       'fechaLimite': fechaLimite != null ? Timestamp.fromDate(fechaLimite!) : null,
+      'recurrente': recurrente,
     };
   }
 
@@ -60,6 +64,7 @@ class Quehacer {
     String? creadoPor,
     DateTime? fechaLimite,
     bool limpiarFechaLimite = false,
+    bool? recurrente,
   }) {
     return Quehacer(
       id: id ?? this.id,
@@ -69,6 +74,7 @@ class Quehacer {
       hecho: hecho ?? this.hecho,
       creadoPor: creadoPor ?? this.creadoPor,
       fechaLimite: limpiarFechaLimite ? null : (fechaLimite ?? this.fechaLimite),
+      recurrente: recurrente ?? this.recurrente,
     );
   }
 }

@@ -1,6 +1,6 @@
 # Decisiones de Diseño e Implementación — Módulo Quehaceres
 
-Este documento registra las decisiones arquitectónicas y de diseño tomadas para el módulo de Quehaceres (Tarjetas #16, #17, #18 y #19) en EasyHome.
+Este documento registra las decisiones arquitectónicas y de diseño tomadas para el módulo de Quehaceres (Tarjetas #16, #17, #18, #19 y #20) en EasyHome.
 
 ---
 
@@ -38,3 +38,11 @@ Este documento registra las decisiones arquitectónicas y de diseño tomadas par
   - La pantalla de agregar quehacer valida en UI y en el servicio que el usuario sea administrador.
   - El checkbox de marcar quehacer solo se habilita para el responsable directo (`asignadoA == uid`). Para cualquier otro integrante, el control aparece visualmente atenuado/deshabilitado y al tocarlo se muestra un mensaje informativo amigable: `"Solo <nombre> puede marcar este quehacer"`.
   - El menú de opciones de quehacer (Editar, Reasignar, Eliminar) solo es visible y accesible para el administrador del hogar. Si se invoca sin permisos, se muestra el mensaje: `"No tienes permiso para esta acción"`.
+
+---
+
+## 6. Rotación semanal automática (#20)
+- **Disparo:** Opción (b) ejecutada al abrir el dashboard (`DashboardScreen._iniciar()`) una vez obtenido el `hogarId`.
+- **Razón:** No requiere infraestructura externa de backend ni Cloud Functions en planes de pago; se ejecuta de forma determinista para cualquier integrante que abra la app.
+- **Idempotencia:** Se almacena `ultimaRotacion` en el documento del hogar con formato ISO de la semana (ej. `"2026-11-02"`). Si coincide con la semana en curso, se omite cualquier operación de escritura.
+- **Reinicio de estado:** Al rotar a la siguiente persona, el quehacer reinicia automáticamente a `hecho: false`, asegurando que la tarea aparezca como pendiente para el nuevo ciclo semanal.

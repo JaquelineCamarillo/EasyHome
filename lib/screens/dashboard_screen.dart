@@ -94,6 +94,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _productosStream = _compras.observarProductos(hogarId);
         _cargandoInicial = false;
       });
+
+      // Rotación semanal automática (#20): se dispara al resolver el hogar
+      _ejecutarRotacionSemanal(hogarId);
     } on HogarException catch (e) {
       if (mounted) {
         setState(() {
@@ -108,6 +111,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _cargandoInicial = false;
         });
       }
+    }
+  }
+
+  Future<void> _ejecutarRotacionSemanal(String hogarId) async {
+    try {
+      final rotados = await _quehaceres.rotarSiCorresponde(hogarId);
+      if (rotados > 0 && mounted) {
+        AppFeedback.mostrarExito(
+          context,
+          'Se rotaron los quehaceres de la semana',
+        );
+      }
+    } catch (_) {
+      // Error silencioso: no bloquea el dashboard
     }
   }
 
@@ -935,6 +952,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final formKey = GlobalKey<FormState>();
     final tituloCtrl = TextEditingController(text: quehacer.titulo);
     DateTime? fechaSeleccionada = quehacer.fechaLimite;
+    bool recurrente = quehacer.recurrente;
     bool guardando = false;
 
     await showModalBottomSheet<void>(
@@ -1073,6 +1091,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      Material(
+                        color: const Color(0xFFF7F5EE),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: const BorderSide(color: Color(0xFFE8E4DA)),
+                        ),
+                        child: SwitchListTile(
+                          key: const Key('switch_recurrente_edicion'),
+                          title: const Text(
+                            'Repetir cada semana (rota entre integrantes)',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          value: recurrente,
+                          activeColor: const Color(0xFF234E3F),
+                          onChanged: (val) {
+                            setModalState(() {
+                              recurrente = val;
+                            });
+                          },
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       FilledButton(
                         key: const Key('boton_guardar_edicion_quehacer'),
@@ -1091,6 +1134,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     fechaLimite: fechaSeleccionada,
                                     limpiarFecha: fechaSeleccionada == null,
                                     esAdmin: esAdmin,
+                                    recurrente: recurrente,
                                   );
                                   if (!ctx.mounted) return;
                                   Navigator.of(ctx).pop();
@@ -1589,66 +1633,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                                       ),
                                                     ),
                                                     Container(
-                                                      key: Key(
-                                                          'badge_estado_${q.id}'),
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 4),
-                                                      decoration:
-                                                          BoxDecoration(
-                                                        color: q.hecho
-                                                            ? const Color(
-                                                                0xFFE8F1EC)
-                                                            : const Color(
-                                                                0xFFFEF3C7),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(12),
-                                                      ),
-                                                      child: Wrap(
-                                                        crossAxisAlignment:
-                                                            WrapCrossAlignment
-                                                                .center,
-                                                        spacing: 4,
-                                                        children: [
-                                                          Icon(
-                                                            q.hecho
-                                                                ? Icons
-                                                                    .check_circle_rounded
-                                                                : Icons
-                                                                    .pending_actions_rounded,
-                                                            size: 16,
-                                                            color: q.hecho
-                                                                ? const Color(
-                                                                    0xFF234E3F)
-                                                                : const Color(
-                                                                    0xFFB45309),
-                                                          ),
-                                                          Text(
-                                                            q.hecho
-                                                                ? 'Hecho'
-                                                                : 'Pendiente',
-                                                            key: Key(
-                                                                'texto_estado_${q.id}'),
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              color: q.hecho
-                                                                  ? const Color(
-                                                                      0xFF234E3F)
-                                                                  : const Color(
-                                                                      0xFFB45309),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 10),
+                                                       key: Key(
+                                                           'badge_estado_${q.id}'),
+                                                       padding: const EdgeInsets
+                                                           .symmetric(
+                                                           horizontal: 10,
+                                                           vertical: 4),
+                                                       decoration:
+                                                           BoxDecoration(
+                                                         color: q.hecho
+                                                             ? const Color(
+                                                                 0xFFE8F1EC)
+                                                             : const Color(
+                                                                 0xFFFEF3C7),
+                                                         borderRadius:
+                                                             BorderRadius
+                                                                 .circular(12),
+                                                       ),
+                                                       child: Wrap(
+                                                         crossAxisAlignment:
+                                                             WrapCrossAlignment
+                                                                 .center,
+                                                         spacing: 4,
+                                                         children: [
+                                                           Icon(
+                                                             q.hecho
+                                                                 ? Icons
+                                                                     .check_circle_rounded
+                                                                 : Icons
+                                                                     .pending_actions_rounded,
+                                                             size: 16,
+                                                             color: q.hecho
+                                                                 ? const Color(
+                                                                     0xFF234E3F)
+                                                                 : const Color(
+                                                                     0xFFB45309),
+                                                           ),
+                                                           Text(
+                                                             q.hecho
+                                                                 ? 'Hecho'
+                                                                 : 'Pendiente',
+                                                             key: Key(
+                                                                 'texto_estado_${q.id}'),
+                                                             style: TextStyle(
+                                                               fontSize: 12,
+                                                               fontWeight:
+                                                                   FontWeight
+                                                                       .bold,
+                                                               color: q.hecho
+                                                                   ? const Color(
+                                                                       0xFF234E3F)
+                                                                   : const Color(
+                                                                       0xFFB45309),
+                                                             ),
+                                                           ),
+                                                         ],
+                                                       ),
+                                                     ),
+                                                     if (q.recurrente)
+                                                       Container(
+                                                         key: Key(
+                                                             'badge_recurrente_${q.id}'),
+                                                         padding:
+                                                             const EdgeInsets
+                                                                 .symmetric(
+                                                           horizontal: 8,
+                                                           vertical: 3,
+                                                         ),
+                                                         decoration:
+                                                             BoxDecoration(
+                                                           color: const Color(
+                                                               0xFFE0F2FE),
+                                                           borderRadius:
+                                                               BorderRadius
+                                                                   .circular(
+                                                                       12),
+                                                           border: Border.all(
+                                                             color: const Color(
+                                                                 0xFFBAE6FD),
+                                                           ),
+                                                         ),
+                                                         child: const Wrap(
+                                                           crossAxisAlignment:
+                                                               WrapCrossAlignment
+                                                                   .center,
+                                                           spacing: 4,
+                                                           children: [
+                                                             Icon(
+                                                               Icons
+                                                                   .repeat_rounded,
+                                                               size: 14,
+                                                               color: Color(
+                                                                   0xFF0369A1),
+                                                             ),
+                                                             Text(
+                                                               'Semanal',
+                                                               style: TextStyle(
+                                                                 fontSize: 11,
+                                                                 fontWeight:
+                                                                     FontWeight
+                                                                         .bold,
+                                                                 color: Color(
+                                                                     0xFF0369A1),
+                                                               ),
+                                                             ),
+                                                           ],
+                                                         ),
+                                                       ),
+                                                   ],
+                                                 ),
+                                                 const SizedBox(height: 10),
                                                 Wrap(
                                                   spacing: 16,
                                                   runSpacing: 6,

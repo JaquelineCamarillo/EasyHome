@@ -12,6 +12,7 @@ class FakeQuehaceresServiceAgregar extends QuehaceresService {
   String? ultimoAsignadoA;
   DateTime? ultimaFechaLimite;
   bool? ultimoEsAdmin;
+  bool? ultimoRecurrente;
   bool simularResponsableDeOtroHogar = false;
 
   @override
@@ -21,6 +22,7 @@ class FakeQuehaceresServiceAgregar extends QuehaceresService {
     required String asignadoA,
     DateTime? fechaLimite,
     bool esAdmin = true,
+    bool recurrente = false,
   }) async {
     if (!esAdmin) {
       throw const QuehaceresException('Solo el administrador puede crear quehaceres');
@@ -34,6 +36,7 @@ class FakeQuehaceresServiceAgregar extends QuehaceresService {
     ultimoAsignadoA = asignadoA;
     ultimaFechaLimite = fechaLimite;
     ultimoEsAdmin = esAdmin;
+    ultimoRecurrente = recurrente;
     return 'q_nuevo_123';
   }
 }
@@ -70,7 +73,7 @@ Future<void> _montar(
 }
 
 void main() {
-  group('AgregarQuehacerScreen Tests (#17)', () {
+  group('AgregarQuehacerScreen Tests (#17 y #20)', () {
     late FakeQuehaceresServiceAgregar fakeQuehaceres;
     late FakeHogarServiceAgregar fakeHogares;
 
@@ -144,6 +147,33 @@ void main() {
       expect(fakeQuehaceres.ultimoAsignadoA, 'u_admin');
       expect(fakeQuehaceres.ultimaFechaLimite, isNull);
       expect(fakeQuehaceres.ultimoEsAdmin, isTrue);
+      expect(fakeQuehaceres.ultimoRecurrente, isFalse);
+    });
+
+    testWidgets('switch recurrente (#20) activa repetición semanal y lo envía al servicio',
+        (tester) async {
+      await _montar(
+        tester,
+        fakeQuehaceres: fakeQuehaceres,
+        fakeHogares: fakeHogares,
+        esAdmin: true,
+      );
+
+      final campoTitulo = find.byKey(const Key('campo_titulo_quehacer'));
+      final switchRecurrente = find.byKey(const Key('switch_recurrente'));
+      final botonCrear = find.byKey(const Key('boton_crear_quehacer'));
+
+      expect(switchRecurrente, findsOneWidget);
+
+      await tester.enterText(campoTitulo, 'Lavar platos');
+      await tester.tap(switchRecurrente);
+      await tester.pumpAndSettle();
+
+      await tester.tap(botonCrear);
+      await tester.pumpAndSettle();
+
+      expect(fakeQuehaceres.ultimoTitulo, 'Lavar platos');
+      expect(fakeQuehaceres.ultimoRecurrente, isTrue);
     });
 
     testWidgets('selector de fecha permite elegir y quitar fecha opcional',

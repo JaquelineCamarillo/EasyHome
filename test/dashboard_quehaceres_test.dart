@@ -17,6 +17,9 @@ class FakeQuehaceresTestService extends QuehaceresService {
   @override
   Stream<List<Quehacer>> observarQuehaceres(String hogarId) =>
       quehaceresCtrl.stream;
+
+  @override
+  Future<int> rotarSiCorresponde(String hogarId, {DateTime? ahora}) async => 0;
 }
 
 class FakeHogarQuehaceresTestService extends HogarService {
@@ -59,6 +62,7 @@ final _q1 = Quehacer(
   hecho: false,
   creadoPor: 'u1',
   fechaLimite: DateTime(2026, 11, 20),
+  recurrente: true,
 );
 
 final _q2 = Quehacer(
@@ -68,6 +72,7 @@ final _q2 = Quehacer(
   asignadoA: 'u2',
   hecho: false,
   creadoPor: 'u1',
+  recurrente: false,
 );
 
 final _q3 = Quehacer(
@@ -77,6 +82,7 @@ final _q3 = Quehacer(
   asignadoA: 'u1',
   hecho: true,
   creadoPor: 'u1',
+  recurrente: false,
 );
 
 Future<void> _montar(
@@ -111,7 +117,7 @@ Future<void> _montar(
 }
 
 void main() {
-  group('Dashboard Quehaceres Tests (#16)', () {
+  group('Dashboard Quehaceres Tests (#16 y #20)', () {
     late FakeQuehaceresTestService fakeQuehaceres;
     late FakeHogarQuehaceresTestService fakeHogares;
     late FakeComprasTestService fakeCompras;
@@ -156,6 +162,11 @@ void main() {
       expect(find.text('Pendiente'), findsNWidgets(2));
       expect(find.text('Hecho'), findsOneWidget);
       expect(find.text('20/11/2026'), findsOneWidget);
+
+      // Badge de rotación semanal (#20)
+      expect(find.byKey(const Key('badge_recurrente_q1')), findsOneWidget);
+      expect(find.text('Semanal'), findsOneWidget);
+      expect(find.byKey(const Key('badge_recurrente_q2')), findsNothing);
     });
 
     testWidgets('filtro Mis quehaceres muestra solo los asignados al uid actual',

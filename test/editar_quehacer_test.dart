@@ -18,6 +18,7 @@ class FakeQuehaceresEditarService extends QuehaceresService {
   String? tituloEditado;
   DateTime? fechaLimiteEditada;
   bool? limpiarFechaEditada;
+  bool? recurrenteEditado;
 
   String? quehacerIdReasignado;
   String? nuevoAsignadoAReasignado;
@@ -35,6 +36,7 @@ class FakeQuehaceresEditarService extends QuehaceresService {
     DateTime? fechaLimite,
     bool limpiarFecha = false,
     bool esAdmin = true,
+    bool? recurrente,
   }) async {
     if (!esAdmin) {
       throw const QuehaceresException(QuehaceresService.msgSinPermiso);
@@ -43,7 +45,11 @@ class FakeQuehaceresEditarService extends QuehaceresService {
     tituloEditado = titulo;
     fechaLimiteEditada = fechaLimite;
     limpiarFechaEditada = limpiarFecha;
+    recurrenteEditado = recurrente;
   }
+
+  @override
+  Future<int> rotarSiCorresponde(String hogarId, {DateTime? ahora}) async => 0;
 
   @override
   Future<void> reasignarQuehacer({
@@ -103,6 +109,7 @@ final _qPrueba = Quehacer(
   hecho: false,
   creadoPor: 'u_admin',
   fechaLimite: DateTime(2026, 12, 1),
+  recurrente: false,
 );
 
 Future<void> _montar(
@@ -134,7 +141,7 @@ Future<void> _montar(
 }
 
 void main() {
-  group('Editar, reasignar y eliminar Quehacer (#19)', () {
+  group('Editar, reasignar y eliminar Quehacer (#19 y #20)', () {
     late FakeQuehaceresEditarService fakeQuehaceres;
     late FakeHogarEditarService fakeHogares;
     late FakeComprasEditarService fakeCompras;
@@ -177,7 +184,7 @@ void main() {
       expect(find.byKey(const Key('opcion_eliminar_quehacer')), findsOneWidget);
     });
 
-    testWidgets('editar precarga título y fecha, y guarda los cambios',
+    testWidgets('editar precarga título, fecha y switch recurrente, y guarda los cambios',
         (tester) async {
       await _montar(
         tester,
@@ -208,9 +215,13 @@ void main() {
         '01/12/2026',
       );
 
-      // Modificar título
+      // Modificar título y activar switch recurrente
       final campoTitulo = find.byKey(const Key('campo_editar_titulo_quehacer'));
       await tester.enterText(campoTitulo, 'Limpiar y ordenar garage');
+
+      final switchRecurrente = find.byKey(const Key('switch_recurrente_edicion'));
+      expect(switchRecurrente, findsOneWidget);
+      await tester.tap(switchRecurrente);
       await tester.pumpAndSettle();
 
       // Guardar
@@ -219,6 +230,7 @@ void main() {
 
       expect(fakeQuehaceres.quehacerIdEditado, 'q1');
       expect(fakeQuehaceres.tituloEditado, 'Limpiar y ordenar garage');
+      expect(fakeQuehaceres.recurrenteEditado, isTrue);
       expect(find.text('Quehacer actualizado'), findsOneWidget);
     });
 

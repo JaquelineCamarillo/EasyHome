@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/quehacer.dart';
+import '../utils/rotacion_semanal.dart';
 
 /// Error con mensaje traducido al español para mostrar en la interfaz.
 class QuehaceresException implements Exception {
@@ -96,6 +97,7 @@ class QuehaceresService {
     required String asignadoA,
     DateTime? fechaLimite,
     bool esAdmin = true,
+    bool recurrente = false,
   }) async {
     final uid = usuarioActualId;
     if (uid == null) throw const QuehaceresException(msgSesionExpirada);
@@ -123,6 +125,7 @@ class QuehaceresService {
         'hecho': false,
         'creadoPor': uid,
         'fechaLimite': fechaLimite != null ? Timestamp.fromDate(fechaLimite) : null,
+        'recurrente': recurrente,
       });
 
       return docRef.id;
@@ -163,7 +166,7 @@ class QuehaceresService {
     }
   }
 
-  /// Actualiza los datos de un quehacer (título y/o fecha límite).
+  /// Actualiza los datos de un quehacer (título, fecha límite y/o recurrencia).
   /// Exclusivo para administradores.
   Future<void> actualizarQuehacer({
     required String quehacerId,
@@ -171,6 +174,7 @@ class QuehaceresService {
     DateTime? fechaLimite,
     bool limpiarFecha = false,
     bool esAdmin = true,
+    bool? recurrente,
   }) async {
     if (!esAdmin) {
       throw const QuehaceresException(msgSinPermiso);
@@ -190,6 +194,10 @@ class QuehaceresService {
         datos['fechaLimite'] = null;
       } else if (fechaLimite != null) {
         datos['fechaLimite'] = Timestamp.fromDate(fechaLimite);
+      }
+
+      if (recurrente != null) {
+        datos['recurrente'] = recurrente;
       }
 
       await _db.collection('quehaceres').doc(quehacerId).update(datos);
@@ -251,6 +259,111 @@ class QuehaceresService {
       throw const QuehaceresException(msgErrorEliminar);
     } catch (_) {
       throw const QuehaceresException(msgSinConexion);
+    }
+  }
+
+  /// Ejecuta la rotación semanal automática de quehaceres recurrentes (#20).
+  ///
+  /// - Disparo al abrir la app cuando se conoce [hogarId].
+  /// - Idempotente: si [hogares/{hogarId}.ultimaRotacion] coincide con la semana actual,
+  ///   no realiza cambios.
+  /// - Si es la primera vez que se evalúa (sin `ultimaRotacion`), registra la semana
+  ///   actual y el orden inicial sin desplazar tareas (establece línea base).
+  /// - Al rotar, cada quehacer con `recurrente == true` se reasigna al siguiente
+  ///   integrante del ciclo (según semanas transcurridas) y su estado `hecho` se reinicia a `false`.
+  /// - Devuelve la cantidad de quehaceres rotados (0 si no hubo rotación).
+  Future<int> rotarSiCorresponde(String hogarId, {DateTime? ahora}) async {
+    final fecha = ahora ?? DateTime.now();
+    final claveActual = RotacionSemanal.claveSemana(fecha);
+
+    try {
+      final hogarDocRef = _db.collection('hogares').doc(hogarId);
+      final hogarDoc = await hogarDocRef.get();
+      if (!hogarDoc.exists) return 0;
+
+      final dataHogar = hogarDoc.data() ?? <String, dynamic>{};
+      final ultimaRotacion = dataHogar['ultimaRotacion'] as String?;
+      final dynamic rawOrden = dataHogar['ordenRotacion'];
+      final List<String> ordenGuardado = rawOrden is List
+          ? rawOrden.map((e) => e.toString()).toList()
+          : <String>[];
+
+      // Obtener integrantes actuales del hogar
+      final usuariosSnap = await _db
+          .collection('usuarios')
+          .where('hogarId', isEqualTo: hogarId)
+          .get();
+
+      final integrantesUids = usuariosSnap.docs.map((d) => d.id).toList();
+      final ordenReconciliado = RotacionSemanal.reconciliarOrden(
+        ordenGuardado,
+        integrantesUids,
+      );
+
+      // Si no hay rotación previa registrada, inicializamos la línea base sin rotar
+      if (ultimaRotacion == null || ultimaRotacion.isEmpty) {
+        await hogarDocRef.update({
+          'ultimaRotacion': claveActual,
+          'ordenRotacion': ordenReconciliado,
+        });
+        return 0;
+      }
+
+      // Si ya se rotó esta semana, idempotencia estricta
+      if (ultimaRotacion == claveActual) {
+        // Si el orden reconciliado cambió por altas/bajas de integrantes, persistir
+        if (!listEquals(ordenGuardado, ordenReconciliado)) {
+          await hogarDocRef.update({
+            'ordenRotacion': ordenReconciliado,
+          });
+        }
+        return 0;
+      }
+
+      final semanas = RotacionSemanal.semanasEntre(ultimaRotacion, claveActual);
+      if (semanas <= 0) {
+        return 0;
+      }
+
+      // Consultar quehaceres recurrentes del hogar
+      final quehaceresSnap = await _db
+          .collection('quehaceres')
+          .where('hogarId', isEqualTo: hogarId)
+          .where('recurrente', isEqualTo: true)
+          .get();
+
+      final batch = _db.batch();
+
+      // Actualizar registro de rotación en el hogar
+      batch.update(hogarDocRef, {
+        'ultimaRotacion': claveActual,
+        'ordenRotacion': ordenReconciliado,
+      });
+
+      int rotados = 0;
+      for (final doc in quehaceresSnap.docs) {
+        final data = doc.data();
+        final actualUid = data['asignadoA'] as String?;
+        final nuevoUid = RotacionSemanal.siguienteResponsable(
+          orden: ordenReconciliado,
+          actual: actualUid,
+          semanas: semanas,
+        );
+
+        if (nuevoUid != null) {
+          batch.update(doc.reference, {
+            'asignadoA': nuevoUid,
+            'hecho': false,
+          });
+          rotados++;
+        }
+      }
+
+      await batch.commit();
+      return rotados;
+    } catch (e) {
+      debugPrint('Error durante rotación semanal de quehaceres: $e');
+      return 0;
     }
   }
 }

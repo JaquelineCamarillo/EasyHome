@@ -7,7 +7,7 @@ import '../services/usuario_service.dart';
 import '../utils/app_feedback.dart';
 import '../utils/validators.dart';
 
-/// Pantalla #17 — Formulario para crear un nuevo quehacer en el hogar.
+/// Pantalla #17 y #20 — Formulario para crear un nuevo quehacer en el hogar.
 class AgregarQuehacerScreen extends StatefulWidget {
   const AgregarQuehacerScreen({
     super.key,
@@ -45,6 +45,7 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
 
   String? _responsableSeleccionado;
   DateTime? _fechaSeleccionada;
+  bool _recurrente = false;
   String? _hogarId;
   bool _esAdmin = false;
   bool _cargandoInicial = true;
@@ -137,6 +138,7 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
         asignadoA: _responsableSeleccionado!,
         fechaLimite: _fechaSeleccionada,
         esAdmin: _esAdmin,
+        recurrente: _recurrente,
       );
 
       if (!mounted) return;
@@ -155,8 +157,6 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tema = Theme.of(context);
-
     if (_cargandoInicial) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -295,6 +295,32 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
                       ],
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Material(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: const BorderSide(color: Color(0xFFE3DFD5), width: 1.2),
+                ),
+                child: SwitchListTile(
+                  key: const Key('switch_recurrente'),
+                  title: const Text(
+                    'Repetir cada semana (rota entre integrantes)',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: const Text(
+                    'Al iniciar la semana se reasigna automáticamente al siguiente integrante',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  value: _recurrente,
+                  activeColor: const Color(0xFF234E3F),
+                  onChanged: (val) {
+                    setState(() {
+                      _recurrente = val;
+                    });
+                  },
                 ),
               ),
               const SizedBox(height: 32),

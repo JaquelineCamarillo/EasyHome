@@ -26,10 +26,16 @@ match /quehaceres/{quehacerId} {
                 && request.resource.data.creadoPor == request.auth.uid
                 && request.resource.data.hecho == false;
   allow update: if estaAutenticado() && (
+      // Admin del hogar puede actualizar cualquier campo del quehacer
       (soyAdminDe(resource.data.hogarId) && request.resource.data.hogarId == resource.data.hogarId)
+      // El responsable actual puede marcar/desmarcar su quehacer
       || (resource.data.asignadoA == request.auth.uid
           && resource.data.hogarId == miHogarId()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hecho']))
+      // Rotación semanal (#20): cualquier integrante del hogar puede rotar tareas recurrentes
+      || (resource.data.hogarId == miHogarId()
+          && resource.data.recurrente == true
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asignadoA', 'hecho']))
   );
   allow delete: if estaAutenticado() && soyAdminDe(resource.data.hogarId);
 }
@@ -40,6 +46,7 @@ match /quehaceres/{quehacerId} {
 - **Actualización (`update`):**
   1. El administrador del hogar puede editar o reasignar cualquier campo del quehacer (manteniendo el `hogarId` constante).
   2. El integrante responsable (`resource.data.asignadoA == request.auth.uid`) puede actualizar **únicamente** el campo `hecho` (`affectedKeys().hasOnly(['hecho'])`). Ningún otro integrante puede alterar el estado ni los datos.
+  3. **Rotación Semanal (#20):** Cualquier integrante del hogar puede ejecutar la rotación semanal automática en quehaceres recurrentes (`recurrente == true`), actualizando únicamente los campos `asignadoA` (nuevo responsable del ciclo) y `hecho` (reiniciado a `false`).
 - **Eliminación (`delete`):** Exclusiva para el administrador del hogar.
 
 ---
@@ -74,4 +81,5 @@ Se incluye en `firestore.rules` como comentario la regla que restringe la autoas
    - Creación de quehacer por usuario admin: permitida.
    - Modificación del campo `hecho` por el usuario asignado: permitida.
    - Modificación del campo `hecho` por un usuario distinto al asignado (y no admin): bloqueada.
+   - Rotación semanal por integrante del hogar: modificación de `asignadoA` y `hecho` en tarea con `recurrente == true` permitida; cualquier otro campo bloqueado.
 5. Haz clic en **Publicar** (*Publish*).
