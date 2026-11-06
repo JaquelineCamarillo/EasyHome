@@ -1,19 +1,28 @@
 import 'package:flutter/material.dart';
 
+import '../models/integrante.dart';
 import '../models/producto.dart';
+import '../models/quehacer.dart';
 import '../routes.dart';
 import '../services/compras_service.dart';
 import '../services/hogar_service.dart';
+import '../services/quehaceres_service.dart';
+import '../services/usuario_service.dart';
 import '../utils/app_feedback.dart';
 import '../utils/validators.dart';
 
-/// Pantalla #9 — Dashboard de compras en tiempo real.
+/// Pantalla principal — Dashboard de compras y quehaceres en tiempo real.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
     super.key,
     this.hogarId,
     this.comprasService,
     this.hogarService,
+    this.quehaceresService,
+    this.usuarioService,
+    this.usuarioActualId,
+    this.esAdministrador,
+    this.vistaInicial = 0,
   });
 
   /// Si no se especifica, se consulta del usuario actual.
@@ -22,6 +31,11 @@ class DashboardScreen extends StatefulWidget {
   /// Inyectable para pruebas; por defecto usa Firebase real.
   final ComprasService? comprasService;
   final HogarService? hogarService;
+  final QuehaceresService? quehaceresService;
+  final UsuarioService? usuarioService;
+  final String? usuarioActualId;
+  final bool? esAdministrador;
+  final int vistaInicial;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -32,8 +46,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       widget.comprasService ?? ComprasService();
   late final HogarService _hogares =
       widget.hogarService ?? HogarService();
+  late final QuehaceresService _quehaceres =
+      widget.quehaceresService ?? QuehaceresService();
+  late final UsuarioService _usuarios =
+      widget.usuarioService ?? UsuarioService();
+
+  late int _indiceSeccion = widget.vistaInicial;
+  String _filtroQuehaceres = 'mis';
+  String? _hogarIdResuelto;
 
   Stream<List<Producto>>? _productosStream;
+  Stream<List<Quehacer>>? _quehaceresStream;
+  Stream<List<Integrante>>? _integrantesStream;
   String? _error;
   bool _cargandoInicial = true;
 
@@ -66,6 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       setState(() {
+        _hogarIdResuelto = hogarId;
         _productosStream = _compras.observarProductos(hogarId);
         _cargandoInicial = false;
       });
@@ -84,6 +109,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     }
+  }
+
+  Stream<List<Quehacer>> _obtenerQuehaceresStream(String hogarId) {
+    return _quehaceresStream ??= _quehaceres.observarQuehaceres(hogarId);
+  }
+
+  Stream<List<Integrante>> _obtenerIntegrantesStream(String hogarId) {
+    return _integrantesStream ??= _hogares.observarIntegrantes(hogarId);
   }
 
   Future<void> _cambiarEstadoProducto(Producto producto) async {
@@ -480,6 +513,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
+    if (_indiceSeccion == 1) {
+      return _buildVistaQuehaceres(
+          tema, _hogarIdResuelto ?? widget.hogarId ?? '');
+    }
+
     final stream = _productosStream;
     if (stream == null) {
       return const Scaffold(
@@ -676,6 +714,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
             ),
+            bottomNavigationBar: _crearBottomNav(),
             floatingActionButton: FloatingActionButton.extended(
               key: const Key('boton_agregar_producto'),
               tooltip: 'Agregar producto',
@@ -688,6 +727,415 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 'Agregar',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _crearBottomNav() {
+    return BottomNavigationBar(
+      key: const Key('barra_navegacion_dashboard'),
+      currentIndex: _indiceSeccion,
+      onTap: (index) {
+        setState(() {
+          _indiceSeccion = index;
+        });
+      },
+      selectedItemColor: const Color(0xFF234E3F),
+      unselectedItemColor: Colors.black54,
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.shopping_cart_outlined, key: Key('nav_compras')),
+          activeIcon: Icon(Icons.shopping_cart_rounded),
+          label: 'Compras',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.checklist_rounded, key: Key('nav_quehaceres')),
+          activeIcon: Icon(Icons.checklist_outlined),
+          label: 'Quehaceres',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVistaQuehaceres(ThemeData tema, String hogarId) {
+    final uidActual = widget.usuarioActualId ?? _usuarios.usuarioActualId ?? '';
+
+    return StreamBuilder<List<Integrante>>(
+      stream: _obtenerIntegrantesStream(hogarId),
+      builder: (context, integrantesSnap) {
+        final integrantes = integrantesSnap.data ?? [];
+        final integrantesMap = {for (var i in integrantes) i.uid: i.nombre};
+        final esAdmin = widget.esAdministrador ??
+            integrantes.any((i) => i.uid == uidActual && i.esAdministrador);
+
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            scrolledUnderElevation: 0,
+            elevation: 0,
+            title: const Text(
+              'Quehaceres',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+              ),
+            ),
+            actions: [
+              IconButton(
+                key: const Key('boton_perfil_hogar_quehaceres'),
+                tooltip: 'Perfil del hogar',
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFE8E4DA)),
+                  ),
+                  child: Icon(
+                    Icons.group_rounded,
+                    size: 20,
+                    color: tema.colorScheme.primary,
+                  ),
+                ),
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.perfilHogar),
+              ),
+              IconButton(
+                key: const Key('boton_mi_perfil_quehaceres'),
+                tooltip: 'Mi perfil',
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFE8E4DA)),
+                  ),
+                  child: Icon(
+                    Icons.person_outline_rounded,
+                    size: 20,
+                    color: tema.colorScheme.primary,
+                  ),
+                ),
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.editarPerfil),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          bottomNavigationBar: _crearBottomNav(),
+          floatingActionButton: esAdmin
+              ? FloatingActionButton.extended(
+                  key: const Key('boton_agregar_quehacer'),
+                  tooltip: 'Agregar quehacer',
+                  backgroundColor: tema.colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  onPressed: () async {
+                    await Navigator.of(context)
+                        .pushNamed(AppRoutes.agregarQuehacer);
+                  },
+                  icon: const Icon(Icons.add_rounded, size: 24),
+                  label: const Text(
+                    'Agregar',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                )
+              : null,
+          body: SafeArea(
+            child: StreamBuilder<List<Quehacer>>(
+              stream: _obtenerQuehaceresStream(hogarId),
+              builder: (context, quehaceresSnap) {
+                if (quehaceresSnap.hasError) {
+                  return const Center(
+                    child: Text(QuehaceresService.msgErrorCargar),
+                  );
+                }
+
+                if (!quehaceresSnap.hasData &&
+                    quehaceresSnap.connectionState != ConnectionState.active) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final todos = quehaceresSnap.data ?? [];
+                final misQuehaceres =
+                    todos.where((q) => q.asignadoA == uidActual).toList();
+                final lista =
+                    _filtroQuehaceres == 'mis' ? misQuehaceres : todos;
+
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEBE7DD),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                key: const Key('filtro_mis_quehaceres'),
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () =>
+                                    setState(() => _filtroQuehaceres = 'mis'),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: _filtroQuehaceres == 'mis'
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: _filtroQuehaceres == 'mis'
+                                        ? const [
+                                            BoxShadow(
+                                              color: Color(0x10000000),
+                                              blurRadius: 4,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Text(
+                                    'Mis quehaceres',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: _filtroQuehaceres == 'mis'
+                                          ? tema.colorScheme.primary
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: InkWell(
+                                key: const Key('filtro_todos_quehaceres'),
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () => setState(
+                                    () => _filtroQuehaceres = 'todos'),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: _filtroQuehaceres == 'todos'
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: _filtroQuehaceres == 'todos'
+                                        ? const [
+                                            BoxShadow(
+                                              color: Color(0x10000000),
+                                              blurRadius: 4,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Text(
+                                    'Todos los del hogar',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: _filtroQuehaceres == 'todos'
+                                          ? tema.colorScheme.primary
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: lista.isEmpty
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Text(
+                                  'Aún no hay quehaceres',
+                                  key: Key('estado_vacio_quehaceres'),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              itemCount: lista.length,
+                              itemBuilder: (context, index) {
+                                final q = lista[index];
+                                final responsable =
+                                    integrantesMap[q.asignadoA] ?? 'Integrante';
+
+                                return Card(
+                                  key: Key('item_quehacer_${q.id}'),
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: const BorderSide(
+                                        color: Color(0xFFE8E4DA)),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Wrap(
+                                          alignment: WrapAlignment.spaceBetween,
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          spacing: 8,
+                                          runSpacing: 4,
+                                          children: [
+                                            Text(
+                                              q.titulo,
+                                              key: Key(
+                                                  'titulo_quehacer_${q.id}'),
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                decoration: q.hecho
+                                                    ? TextDecoration.lineThrough
+                                                    : null,
+                                                color: q.hecho
+                                                    ? Colors.black45
+                                                    : const Color(0xFF1E2D27),
+                                              ),
+                                            ),
+                                            Container(
+                                              key: Key('badge_estado_${q.id}'),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: q.hecho
+                                                    ? const Color(0xFFE8F1EC)
+                                                    : const Color(0xFFFEF3C7),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Wrap(
+                                                crossAxisAlignment:
+                                                    WrapCrossAlignment.center,
+                                                spacing: 4,
+                                                children: [
+                                                  Icon(
+                                                    q.hecho
+                                                        ? Icons
+                                                            .check_circle_rounded
+                                                        : Icons
+                                                            .pending_actions_rounded,
+                                                    size: 16,
+                                                    color: q.hecho
+                                                        ? const Color(0xFF234E3F)
+                                                        : const Color(
+                                                            0xFFB45309),
+                                                  ),
+                                                  Text(
+                                                    q.hecho
+                                                        ? 'Hecho'
+                                                        : 'Pendiente',
+                                                    key: Key(
+                                                        'texto_estado_${q.id}'),
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: q.hecho
+                                                          ? const Color(
+                                                              0xFF234E3F)
+                                                          : const Color(
+                                                              0xFFB45309),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Wrap(
+                                          spacing: 16,
+                                          runSpacing: 6,
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          children: [
+                                            Wrap(
+                                              crossAxisAlignment:
+                                                  WrapCrossAlignment.center,
+                                              spacing: 4,
+                                              children: [
+                                                const Icon(
+                                                  Icons.person_outline_rounded,
+                                                  size: 16,
+                                                  color: Colors.black54,
+                                                ),
+                                                Text(
+                                                  responsable,
+                                                  key: Key(
+                                                      'responsable_quehacer_${q.id}'),
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.black87,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (q.fechaLimite != null)
+                                              Wrap(
+                                                crossAxisAlignment:
+                                                    WrapCrossAlignment.center,
+                                                spacing: 4,
+                                                children: [
+                                                  const Icon(
+                                                    Icons
+                                                        .calendar_today_outlined,
+                                                    size: 14,
+                                                    color: Colors.black54,
+                                                  ),
+                                                  Text(
+                                                    '${q.fechaLimite!.day.toString().padLeft(2, '0')}/${q.fechaLimite!.month.toString().padLeft(2, '0')}/${q.fechaLimite!.year}',
+                                                    key: Key(
+                                                        'fecha_quehacer_${q.id}'),
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black87,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         );

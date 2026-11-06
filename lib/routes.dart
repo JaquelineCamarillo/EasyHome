@@ -8,4 +8,5 @@ class AppRoutes {
   static const dashboard = '/dashboard'; // Pantalla principal (compras + quehaceres)
   static const agregarProducto = '/agregar-producto'; // #10 Formulario agregar producto
   static const editarPerfil = '/editar-perfil'; // Perfil y configuración de usuario
+  static const agregarQuehacer = '/agregar-quehacer'; // #17 Formulario agregar quehacer
 }
