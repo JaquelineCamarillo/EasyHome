@@ -52,4 +52,17 @@ void main() {
       expect(Validators.nombreHogar('Casa de los Pérez'), isNull);
     });
   });
+
+  group('titulo del quehacer (#17)', () {
+    test('no acepta vacío ni solo espacios', () {
+      expect(Validators.tituloQuehacer(''), 'Ingresa el título del quehacer');
+      expect(Validators.tituloQuehacer('    '), 'Ingresa el título del quehacer');
+      expect(Validators.tituloQuehacer(null), 'Ingresa el título del quehacer');
+      expect(Validators.titulo(''), 'Ingresa el título del quehacer');
+    });
+    test('acepta título válido', () {
+      expect(Validators.tituloQuehacer('Lavar los platos'), isNull);
+      expect(Validators.titulo('Tirar la basura'), isNull);
+    });
+  });
 }

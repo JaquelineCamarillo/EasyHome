@@ -11,7 +11,8 @@ class Validators {
   }
 
   static String? correo(String? value) {
-    if (!_emailRegex.hasMatch((value ?? '').trim())) return 'Correo inválido';
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty || !_emailRegex.hasMatch(texto)) return 'Correo inválido';
     return null;
   }
 
@@ -42,5 +43,50 @@ class Validators {
       return 'Máximo $maxNombreHogar caracteres';
     }
     return null;
+  }
+
+  /// Nombre del producto: obligatorio y no vacío.
+  static String? nombreProducto(String? value) {
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty) return 'Ingresa el nombre del producto';
+    if (texto.length < 2) return 'El nombre debe tener al menos 2 letras';
+    return null;
+  }
+
+  /// Cantidad del producto: número entero mayor a 0.
+  static String? cantidadProducto(String? value) {
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty) return 'Ingresa la cantidad';
+    final numero = int.tryParse(texto);
+    if (numero == null || numero <= 0) {
+      return 'La cantidad debe ser un número entero mayor a 0';
+    }
+    return null;
+  }
+
+  /// Título del quehacer: obligatorio y no solo espacios (#17).
+  static String? tituloQuehacer(String? value) {
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty) return 'Ingresa el título del quehacer';
+    return null;
+  }
+
+  static String? titulo(String? value) => tituloQuehacer(value);
+
+  // --- Indicadores visuales de formato de contraseña ---
+  static bool tieneMinimo6(String? value) => (value ?? '').length >= 6;
+  static bool tieneLetra(String? value) => RegExp(r'[a-zA-Z]').hasMatch(value ?? '');
+  static bool tieneNumero(String? value) => RegExp(r'[0-9]').hasMatch(value ?? '');
+  static bool tieneMayuscula(String? value) => RegExp(r'[A-Z]').hasMatch(value ?? '');
+
+  /// Nivel de seguridad entre 0.0 y 1.0 para el indicador visual
+  static double nivelSeguridadContrasena(String? value) {
+    if (value == null || value.isEmpty) return 0.0;
+    double score = 0.0;
+    if (value.length >= 6) score += 0.35;
+    if (value.length >= 8) score += 0.20;
+    if (tieneLetra(value)) score += 0.25;
+    if (tieneNumero(value)) score += 0.20;
+    return score.clamp(0.0, 1.0);
   }
 }

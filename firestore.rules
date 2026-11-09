@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function miHogarId() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.hogarId;
+    }
+
+    function soyAdminDe(hid) {
+      let yo = get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+      return yo.hogarId == hid && yo.esAdministrador == true;
+    }
+
+    match /usuarios/{uid} {
+      allow read: if estaAutenticado();
+      allow create: if estaAutenticado() && request.auth.uid == uid;
+      allow update: if estaAutenticado() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /hogares/{hogarId} {
+      allow read: if estaAutenticado() && miHogarId() == hogarId;
+      allow create: if estaAutenticado();
+      allow update: if estaAutenticado() && miHogarId() == hogarId;
+      allow delete: if false;
+    }
+
+    match /productos/{productoId} {
+      allow read: if estaAutenticado() && resource.data.hogarId == miHogarId();
+      allow create: if estaAutenticado() && request.resource.data.hogarId == miHogarId();
+      allow update, delete: if estaAutenticado() && resource.data.hogarId == miHogarId();
+    }
+
+    match /codigosInvitacion/{codigoId} {
+      allow read: if estaAutenticado();
+      allow create, update, delete: if estaAutenticado();
+    }
+
+    match /quehaceres/{quehacerId} {
+      allow read:   if estaAutenticado() && resource.data.hogarId == miHogarId();
+      allow create: if estaAutenticado()
+                    && soyAdminDe(request.resource.data.hogarId)
+                    && request.resource.data.creadoPor == request.auth.uid
+                    && request.resource.data.hecho == false;
+      allow update: if estaAutenticado() && (
+          // Admin del hogar puede actualizar cualquier campo del quehacer
+          (soyAdminDe(resource.data.hogarId) && request.resource.data.hogarId == resource.data.hogarId)
+          // El responsable actual puede marcar/desmarcar su quehacer
+          || (resource.data.asignadoA == request.auth.uid
+              && resource.data.hogarId == miHogarId()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hecho']))
+          // Rotación semanal (#20): cualquier integrante del hogar puede rotar tareas recurrentes
+          || (resource.data.hogarId == miHogarId()
+              && resource.data.recurrente == true
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asignadoA', 'hecho']))
+      );
+      allow delete: if estaAutenticado() && soyAdminDe(resource.data.hogarId);
+    }
+  }
+}

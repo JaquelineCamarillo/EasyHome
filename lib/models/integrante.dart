@@ -4,11 +4,13 @@ class Integrante {
     required this.uid,
     required this.nombre,
     required this.esAdministrador,
+    this.avatarColor,
   });
 
   final String uid;
   final String nombre;
   final bool esAdministrador;
+  final String? avatarColor;
 
   factory Integrante.fromMap(String uid, Map<String, dynamic> data) {
     final nombre = ((data['nombre'] as String?) ?? '').trim();
@@ -16,6 +18,7 @@ class Integrante {
       uid: uid,
       nombre: nombre.isEmpty ? 'Sin nombre' : nombre,
       esAdministrador: data['esAdministrador'] == true,
+      avatarColor: data['avatarColor'] as String?,
     );
   }
 
