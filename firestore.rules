@@ -2,6 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Funciones auxiliares de autenticación y autorización ---
+
     function estaAutenticado() {
       return request.auth != null;
     }
@@ -15,50 +17,151 @@ service cloud.firestore {
       return yo.hogarId == hid && yo.esAdministrador == true;
     }
 
+    function esTextoValido(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    // --- Colección: usuarios ---
     match /usuarios/{uid} {
+      // Lectura: Cualquier usuario autenticado (necesario para ver compañeros de hogar y perfiles)
       allow read: if estaAutenticado();
-      allow create: if estaAutenticado() && request.auth.uid == uid;
-      allow update: if estaAutenticado() && request.auth.uid == uid;
+
+      // Creación: Al registrarse, solo puede crear su propio perfil con esAdministrador en false y sin hogar
+      allow create: if estaAutenticado()
+                    && request.auth.uid == uid
+                    && esTextoValido(request.resource.data.nombre, 1, 60)
+                    && request.resource.data.esAdministrador == false
+                    && request.resource.data.hogarId == null;
+
+      // Actualización:
+      // 1. El propio usuario actualiza solo nombre o avatarColor
+      // 2. El propio usuario se une a un hogar (esAdministrador SIEMPRE false)
+      // 3. El propio usuario crea un hogar y se vuelve admin (se valida que él sea el creador del hogar)
+      // 4. El propio usuario se sale del hogar (hogarId null, esAdministrador false)
+      // 5. El administrador del hogar cambia el rol de un integrante o lo expulsa
+      allow update: if estaAutenticado() && (
+        // Caso 1: Actualizar nombre o avatar
+        (request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatarColor'])
+          && (!('nombre' in request.resource.data) || esTextoValido(request.resource.data.nombre, 1, 60)))
+
+        // Caso 2: Unirse a un hogar (NO puede ponerse admin)
+        || (request.auth.uid == uid
+          && resource.data.hogarId == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador'])
+          && request.resource.data.esAdministrador == false
+          && request.resource.data.hogarId is string)
+
+        // Caso 3: Crear hogar (se vuelve admin solo si en la misma tx creó el hogar)
+        || (request.auth.uid == uid
+          && resource.data.hogarId == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador'])
+          && request.resource.data.esAdministrador == true
+          && getAfter(/databases/$(database)/documents/hogares/$(request.resource.data.hogarId)).data.creadoPor == request.auth.uid)
+
+        // Caso 4: Salirse del hogar voluntariamente
+        || (request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador'])
+          && request.resource.data.hogarId == null
+          && request.resource.data.esAdministrador == false)
+
+        // Caso 5: Admin del hogar promueve/degrada o expulsa a un integrante de su hogar
+        || (resource.data.hogarId != null
+          && soyAdminDe(resource.data.hogarId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador'])
+          && (
+            (request.resource.data.hogarId == resource.data.hogarId && request.resource.data.esAdministrador is bool)
+            || (request.resource.data.hogarId == null && request.resource.data.esAdministrador == false)
+          ))
+      );
+
+      // Eliminación prohibida para preservar integridad histórica
       allow delete: if false;
     }
 
+    // --- Colección: hogares ---
     match /hogares/{hogarId} {
-      allow read: if estaAutenticado() && miHogarId() == hogarId;
-      allow create: if estaAutenticado();
-      allow update: if estaAutenticado() && miHogarId() == hogarId;
+      // Lectura: Integrantes del hogar o búsqueda de código de invitación al unirse
+      allow read: if estaAutenticado() && (
+        miHogarId() == hogarId || resource.data.codigoInvitacion is string
+      );
+
+      // Creación: Usuario autenticado que se asigna como creador con datos válidos
+      allow create: if estaAutenticado()
+                    && request.resource.data.creadoPor == request.auth.uid
+                    && esTextoValido(request.resource.data.nombre, 1, 50)
+                    && esTextoValido(request.resource.data.codigoInvitacion, 6, 8);
+
+      // Actualización: Solo administradores de ese hogar (cambiar nombre o regenerar código)
+      allow update: if estaAutenticado()
+                    && miHogarId() == hogarId
+                    && soyAdminDe(hogarId)
+                    && request.resource.data.creadoPor == resource.data.creadoPor;
+
       allow delete: if false;
     }
 
+    // --- Colección: productos (Lista de compras) ---
     match /productos/{productoId} {
       allow read: if estaAutenticado() && resource.data.hogarId == miHogarId();
-      allow create: if estaAutenticado() && request.resource.data.hogarId == miHogarId();
-      allow update, delete: if estaAutenticado() && resource.data.hogarId == miHogarId();
+
+      allow create: if estaAutenticado()
+                    && request.resource.data.hogarId == miHogarId()
+                    && esTextoValido(request.resource.data.nombre, 1, 120)
+                    && request.resource.data.cantidad is int
+                    && request.resource.data.cantidad > 0
+                    && request.resource.data.comprado is bool;
+
+      allow update: if estaAutenticado()
+                    && resource.data.hogarId == miHogarId()
+                    && request.resource.data.hogarId == resource.data.hogarId
+                    && esTextoValido(request.resource.data.nombre, 1, 120)
+                    && request.resource.data.cantidad is int
+                    && request.resource.data.cantidad > 0
+                    && request.resource.data.comprado is bool;
+
+      allow delete: if estaAutenticado() && resource.data.hogarId == miHogarId();
     }
 
-    match /codigosInvitacion/{codigoId} {
-      allow read: if estaAutenticado();
-      allow create, update, delete: if estaAutenticado();
-    }
-
+    // --- Colección: quehaceres ---
     match /quehaceres/{quehacerId} {
-      allow read:   if estaAutenticado() && resource.data.hogarId == miHogarId();
+      allow read: if estaAutenticado() && resource.data.hogarId == miHogarId();
+
+      // Solo el administrador del hogar puede crear quehaceres
       allow create: if estaAutenticado()
                     && soyAdminDe(request.resource.data.hogarId)
                     && request.resource.data.creadoPor == request.auth.uid
-                    && request.resource.data.hecho == false;
+                    && request.resource.data.hecho == false
+                    && esTextoValido(request.resource.data.titulo, 1, 120)
+                    && request.resource.data.recurrente is bool;
+
       allow update: if estaAutenticado() && (
-          // Admin del hogar puede actualizar cualquier campo del quehacer
-          (soyAdminDe(resource.data.hogarId) && request.resource.data.hogarId == resource.data.hogarId)
-          // El responsable actual puede marcar/desmarcar su quehacer
-          || (resource.data.asignadoA == request.auth.uid
-              && resource.data.hogarId == miHogarId()
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hecho']))
-          // Rotación semanal (#20): cualquier integrante del hogar puede rotar tareas recurrentes
-          || (resource.data.hogarId == miHogarId()
-              && resource.data.recurrente == true
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asignadoA', 'hecho']))
+        // 1. Admin del hogar puede actualizar cualquier campo sin cambiar de hogar
+        (soyAdminDe(resource.data.hogarId)
+          && request.resource.data.hogarId == resource.data.hogarId
+          && esTextoValido(request.resource.data.titulo, 1, 120))
+
+        // 2. El integrante asignado puede únicamente marcar o desmarcar el estado 'hecho'
+        || (resource.data.asignadoA == request.auth.uid
+          && resource.data.hogarId == miHogarId()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hecho'])
+          && request.resource.data.hecho is bool)
+
+        // 3. Rotación semanal (#20): Cualquier integrante del hogar rota quehaceres recurrentes
+        || (resource.data.hogarId == miHogarId()
+          && resource.data.recurrente == true
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['asignadoA', 'hecho'])
+          && request.resource.data.hecho is bool)
       );
+
+      // Solo el admin del hogar puede eliminar quehaceres
       allow delete: if estaAutenticado() && soyAdminDe(resource.data.hogarId);
+    }
+
+    // --- Colección en desuso o cerrada: codigosInvitacion ---
+    // Los códigos se gestionan de forma segura embebidos en el documento de cada hogar
+    match /codigosInvitacion/{codigoId} {
+      allow read, write: if false;
     }
   }
 }

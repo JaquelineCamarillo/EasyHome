@@ -134,10 +134,15 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('"¿Olvidaste tu contraseña?" está deshabilitado', (tester) async {
+  testWidgets('"¿Olvidaste tu contraseña?" abre el diálogo de restablecimiento', (tester) async {
     await _montar(tester, FakeAuthLogin());
-    final boton = tester.widget<TextButton>(find.byKey(const Key('enlace_olvido')));
-    expect(boton.onPressed, isNull);
+    final boton = find.byKey(const Key('enlace_olvido'));
+    expect(boton, findsOneWidget);
+    await tester.tap(boton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Restablecer contraseña'), findsOneWidget);
+    expect(find.text('Enviar enlace'), findsOneWidget);
   });
 
   testWidgets('el enlace "Regístrate" navega al registro', (tester) async {

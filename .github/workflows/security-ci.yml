@@ -1,0 +1,31 @@
+name: Security & Quality CI
+
+on:
+  push:
+    branches: [ main, develop, feat/*, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  analyze_and_test:
+    name: Flutter Analyze & Automated Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Análisis estático de código (flutter analyze)
+        run: flutter analyze
+
+      - name: Ejecutar Suite de Pruebas y Seguridad (flutter test)
+        run: flutter test --coverage

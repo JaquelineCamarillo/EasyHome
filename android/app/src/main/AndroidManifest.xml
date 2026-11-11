@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Permiso mínimo indispensable para sincronización con Firebase (Principio de privilegios mínimos) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="easyhome"
         android:name="${applicationName}"

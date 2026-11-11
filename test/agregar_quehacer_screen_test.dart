@@ -1,5 +1,4 @@
 import 'package:easyhome/models/integrante.dart';
-import 'package:easyhome/models/quehacer.dart';
 import 'package:easyhome/screens/agregar_quehacer_screen.dart';
 import 'package:easyhome/services/hogar_service.dart';
 import 'package:easyhome/services/quehaceres_service.dart';

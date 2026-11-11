@@ -51,6 +51,18 @@ android/app/build/
 # Widget Preview related
 .widget_preview/
 
-
+# Firebase and sensitive credentials
 android/app/google-services.json 
 ios/Runner/GoogleService-Info.plist
+
+# Environment and secrets
+.env
+.env.*
+*.env
+
+# Android signing keys and local properties
+*.jks
+*.keystore
+key.properties
+local.properties
+
