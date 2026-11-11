@@ -31,7 +31,32 @@ class AuthService {
   static const msgCredencialesIncorrectas = 'Correo o contraseña incorrectos';
   static const msgDemasiadosIntentos = 'Demasiados intentos, espera un momento';
   static const msgRecuperacionEnviada =
-      'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña';
+      'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.';
+
+  /// Envía un correo de recuperación (#22) con respuesta uniforme para prevenir enumeración de usuarios.
+  Future<void> recuperarContrasena(String correo) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: correo.trim());
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Auth reset error: ${e.code}');
+      if (e.code == 'too-many-requests') {
+        throw const AuthException(msgDemasiadosIntentos);
+      }
+      if (e.code == 'network-request-failed') {
+        throw const AuthException(msgSinConexion);
+      }
+      // Cualquier otro error se silencia para evitar enumeración de usuarios
+    } catch (_) {}
+  }
+
+  /// Cierra de forma segura la sesión del usuario.
+  Future<void> cerrarSesion() async {
+    try {
+      await _auth.signOut();
+    } catch (_) {
+      throw const AuthException(msgGenerico);
+    }
+  }
 
   /// Crea el usuario en Firebase Auth y su documento en `usuarios/{uid}`.
   /// Lanza [AuthException] con un mensaje en español si algo falla.
@@ -104,40 +129,6 @@ class AuthService {
     }
   }
 
-  /// Envía correo de restablecimiento de contraseña.
-  /// Implementa control anti-enumeración: si el correo no existe, no lo revela
-  /// al cliente para evitar enumeración maliciosa de cuentas.
-  Future<void> recuperarContrasena(String correo) async {
-    final correoLimpio = correo.trim();
-    if (correoLimpio.isEmpty) {
-      throw const AuthException('Ingresa tu correo');
-    }
-    try {
-      await _auth.sendPasswordResetEmail(email: correoLimpio);
-    } on FirebaseAuthException catch (e) {
-      debugPrint('Auth error recuperarContrasena: ${e.code}');
-      if (e.code == 'network-request-failed') {
-        throw const AuthException(msgSinConexion);
-      }
-      if (e.code == 'invalid-email') {
-        throw const AuthException('Correo inválido');
-      }
-      // Si el código es 'user-not-found', silenciosamente terminamos para no revelar
-      // la existencia de cuentas (OWASP Anti-Account Enumeration).
-    } catch (_) {
-      throw const AuthException(msgGenerico);
-    }
-  }
-
-  /// Cierra de forma segura la sesión del usuario.
-  Future<void> cerrarSesion() async {
-    try {
-      await _auth.signOut();
-    } catch (_) {
-      throw const AuthException(msgGenerico);
-    }
-  }
-
   String _traducirRegistro(String code) {
     switch (code) {
       case 'email-already-in-use':
@@ -147,7 +138,7 @@ class AuthService {
       case 'invalid-email':
         return 'Correo inválido';
       case 'weak-password':
-        return 'La contraseña debe tener al menos 6 caracteres';
+        return 'La contraseña debe tener al menos 8 caracteres';
       default:
         return msgGenerico;
     }

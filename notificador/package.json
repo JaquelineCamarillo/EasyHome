@@ -1,0 +1,16 @@
+{
+  "name": "easyhome-notificador",
+  "version": "1.0.0",
+  "description": "Notificador local en Node.js para EasyHome (FCM sin Cloud Functions / sin Blaze)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "jest --runInBand"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

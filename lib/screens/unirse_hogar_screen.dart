@@ -24,9 +24,23 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
 
   bool _cargando = false;
   String? _errorGeneral;
+  int _intentosFallidos = 0;
+  DateTime? _bloqueadoHasta;
+
+  bool get _estaBloqueado {
+    if (_bloqueadoHasta == null) return false;
+    return DateTime.now().isBefore(_bloqueadoHasta!);
+  }
 
   bool get _formularioValido =>
+      !_estaBloqueado &&
       _codigoCtrl.text.trim().length == CodigoInvitacion.longitud;
+
+  @override
+  void initState() {
+    super.initState();
+    _codigoCtrl.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
@@ -35,6 +49,12 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
   }
 
   Future<void> _unirse() async {
+    if (_estaBloqueado) {
+      setState(() {
+        _errorGeneral = 'Demasiados intentos fallidos. Espera 60 segundos.';
+      });
+      return;
+    }
     if (!_formularioValido || _cargando) return;
     FocusScope.of(context).unfocus();
     setState(() {
@@ -45,21 +65,30 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
     try {
       await _hogares.unirseAHogar(codigo: _codigoCtrl.text);
       if (!mounted) return;
+      _intentosFallidos = 0;
+      _bloqueadoHasta = null;
       // Unido con éxito: directo al dashboard.
       Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
     } on HogarException catch (e) {
       if (!mounted) return;
-      setState(() {
-        _errorGeneral = e.mensaje;
-        _cargando = false;
-      });
+      _registrarIntentoFallido(e.mensaje);
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _errorGeneral = HogarService.msgNoSePudoUnir;
-        _cargando = false;
-      });
+      _registrarIntentoFallido(HogarService.msgNoSePudoUnir);
     }
+  }
+
+  void _registrarIntentoFallido(String mensajeDefault) {
+    _intentosFallidos++;
+    if (_intentosFallidos >= 5) {
+      _bloqueadoHasta = DateTime.now().add(const Duration(seconds: 60));
+      _errorGeneral = 'Demasiados intentos fallidos. Espera 60 segundos.';
+    } else {
+      _errorGeneral = mensajeDefault;
+    }
+    setState(() {
+      _cargando = false;
+    });
   }
 
   void _irACrearHogar() {
@@ -98,132 +127,130 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
                         boxShadow: [
                           BoxShadow(
                             color: tema.colorScheme.primary.withValues(alpha: 0.3),
-                            blurRadius: 18,
-                            offset: const Offset(0, 6),
+                            blurRadius: 16,
+                            offset: const verticalOffset(6),
                           ),
                         ],
                       ),
                       child: const Icon(
-                        Icons.group_add_rounded,
-                        size: 40,
+                        Icons.vpn_key_rounded,
                         color: Colors.white,
+                        size: 38,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
                   Text(
-                    'Únete a un hogar',
+                    'Unirse a un hogar',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.bold,
                       color: tema.colorScheme.primary,
-                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
-                    'Pídele el código de 6 caracteres a quien creó el hogar',
+                    'Pídele a quien administra el hogar que comparta contigo el código de invitación.',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.bodyMedium?.copyWith(
                       color: Colors.black54,
                     ),
                   ),
                   const SizedBox(height: 32),
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE8E4DA)),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x08000000),
-                          blurRadius: 16,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
+                  Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: tema.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextFormField(
-                          key: const Key('campo_codigo'),
-                          controller: _codigoCtrl,
-                          textCapitalization: TextCapitalization.characters,
-                          textInputAction: TextInputAction.done,
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          textAlign: TextAlign.center,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.deny(RegExp(r'\s')),
-                            const MayusculasFormatter(),
-                            LengthLimitingTextInputFormatter(
-                                CodigoInvitacion.longitud),
-                          ],
-                          decoration: InputDecoration(
-                            labelText: 'Código de invitación',
-                            hintText: 'A3F9K2',
-                            prefixIcon: Icon(
-                              Icons.key_rounded,
-                              color: tema.colorScheme.primary,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            key: const Key('campo_codigo'),
+                            controller: _codigoCtrl,
+                            textCapitalization: TextCapitalization.characters,
+                            textInputAction: TextInputAction.done,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              letterSpacing: 8,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
                             ),
+                            inputFormatters: [
+                              MayusculasFormatter(),
+                              LengthLimitingTextInputFormatter(
+                                  CodigoInvitacion.longitud),
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: 'Código de invitación',
+                              hintText: 'A3F9K2',
+                              prefixIcon: Icon(Icons.key_rounded),
+                              counterText: '',
+                            ),
+                            onFieldSubmitted: (_) => _unirse(),
                           ),
-                          style: const TextStyle(
-                            letterSpacing: 6,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          onChanged: (_) => setState(() => _errorGeneral = null),
-                          onFieldSubmitted: (_) => _unirse(),
-                        ),
-                        const SizedBox(height: 16),
-                        if (_errorGeneral != null) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: tema.colorScheme.error.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(10),
+                          const SizedBox(height: 12),
+                          Text(
+                            'El código tiene ${CodigoInvitacion.longitud} caracteres (letras y números sin espacios).',
+                            style: tema.textTheme.bodySmall?.copyWith(
+                              color: Colors.black45,
                             ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.error_outline_rounded,
-                                    size: 18, color: tema.colorScheme.error),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _errorGeneral!,
-                                    key: const Key('error_general'),
-                                    style: TextStyle(
-                                      color: tema.colorScheme.error,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 16),
-                        ],
-                        FilledButton(
-                          key: const Key('boton_unirse'),
-                          onPressed: (_formularioValido && !_cargando) ? _unirse : null,
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(50),
-                          ),
-                          child: _cargando
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                          if (_errorGeneral != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: tema.colorScheme.error.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.error_outline_rounded,
+                                      size: 18, color: tema.colorScheme.error),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _errorGeneral!,
+                                      key: const Key('error_general'),
+                                      style: TextStyle(
+                                        color: tema.colorScheme.error,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
                                   ),
-                                )
-                              : const Text('Unirse al hogar'),
-                        ),
-                      ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          FilledButton(
+                            key: const Key('boton_unirse'),
+                            onPressed: (_formularioValido && !_cargando) ? _unirse : null,
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(50),
+                            ),
+                            child: _cargando
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Unirse al hogar'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -241,8 +268,8 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
                         child: Text(
                           'Crea tu hogar',
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
                             color: tema.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
@@ -256,4 +283,8 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
       ),
     );
   }
+}
+
+class verticalOffset extends Offset {
+  const verticalOffset(double dy) : super(0, dy);
 }

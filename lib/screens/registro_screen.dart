@@ -85,7 +85,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     final passText = _contrasenaCtrl.text;
-    final tieneMin6 = Validators.tieneMinimo6(passText);
+    final tieneMin8 = Validators.tieneMinimo8(passText);
     final tieneLetra = Validators.tieneLetra(passText);
     final tieneNum = Validators.tieneNumero(passText);
     final nivelSeguridad = Validators.nivelSeguridadContrasena(passText);
@@ -279,8 +279,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
                             runSpacing: 4,
                             children: [
                               _RequisitoChip(
-                                texto: '6+ caracteres',
-                                cumplido: tieneMin6,
+                                texto: '8+ caracteres',
+                                cumplido: tieneMin8,
                               ),
                               _RequisitoChip(
                                 texto: 'Letras',

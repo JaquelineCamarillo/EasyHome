@@ -64,73 +64,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _mostrarDialogoRecuperar() async {
-    final emailCtrl = TextEditingController(text: _correoCtrl.text);
-    final formKey = GlobalKey<FormState>();
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Restablecer contraseña'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Ingresa tu correo y te enviaremos un enlace seguro para restablecer tu contraseña.',
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Correo electrónico',
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
-                validator: Validators.correo,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (formKey.currentState?.validate() ?? false) {
-                Navigator.of(dialogCtx).pop();
-                try {
-                  await _auth.recuperarContrasena(emailCtrl.text);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(AuthService.msgRecuperacionEnviada),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } on AuthException catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(e.mensaje),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Enviar enlace'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
@@ -262,7 +195,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             key: const Key('enlace_olvido'),
-                            onPressed: _cargando ? null : _mostrarDialogoRecuperar,
+                            onPressed: _cargando
+                                ? null
+                                : () => Navigator.of(context).pushNamed(
+                                      AppRoutes.recuperarContrasena,
+                                    ),
                             child: const Text('¿Olvidaste tu contraseña?'),
                           ),
                         ),

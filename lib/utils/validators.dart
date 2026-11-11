@@ -5,6 +5,7 @@ class Validators {
       RegExp(r'^[a-zA-Z0-9.!#$%&*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$');
 
   static const int maxNombreHogar = 30;
+  static const int minContrasena = 8;
   static const int maxNombreUsuario = 60;
   static const int maxTituloQuehacer = 120;
   static const int maxNombreProducto = 120;
@@ -14,6 +15,9 @@ class Validators {
     if (input == null) return '';
     return input.replaceAll(RegExp(r'[\u0000-\u0008\u000B\u000C\u000E-\u001F]'), '').trim();
   }
+
+  /// Sanitización básica para textos ingresados por el usuario
+  static String sanitizarTexto(String? value) => sanitizar(value);
 
   static String? nombre(String? value) {
     final texto = (value ?? '').trim();
@@ -29,10 +33,17 @@ class Validators {
     return null;
   }
 
-  /// Registro: Firebase Auth exige mínimo 6 caracteres.
+  /// Registro y cambio: política fortalecida (#22) con mínimo 8 caracteres, al menos 1 letra y 1 número.
   static String? contrasena(String? value) {
-    if ((value ?? '').length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres';
+    final texto = value ?? '';
+    if (texto.length < minContrasena) {
+      return 'La contraseña debe tener al menos 8 caracteres';
+    }
+    if (!tieneLetra(texto)) {
+      return 'La contraseña debe incluir al menos una letra';
+    }
+    if (!tieneNumero(texto)) {
+      return 'La contraseña debe incluir al menos un número';
     }
     return null;
   }
@@ -97,18 +108,22 @@ class Validators {
 
   // --- Indicadores visuales de formato de contraseña ---
   static bool tieneMinimo6(String? value) => (value ?? '').length >= 6;
+  static bool tieneMinimo8(String? value) => (value ?? '').length >= 8;
   static bool tieneLetra(String? value) => RegExp(r'[a-zA-Z]').hasMatch(value ?? '');
   static bool tieneNumero(String? value) => RegExp(r'[0-9]').hasMatch(value ?? '');
   static bool tieneMayuscula(String? value) => RegExp(r'[A-Z]').hasMatch(value ?? '');
 
-  /// Nivel de seguridad entre 0.0 y 1.0 para el indicador visual
+  /// Nivel de seguridad entre 0.0 y 1.0 para el indicador visual (#22)
   static double nivelSeguridadContrasena(String? value) {
     if (value == null || value.isEmpty) return 0.0;
     double score = 0.0;
-    if (value.length >= 6) score += 0.35;
-    if (value.length >= 8) score += 0.20;
-    if (tieneLetra(value)) score += 0.25;
-    if (tieneNumero(value)) score += 0.20;
+    if (value.length >= 8) {
+      score += 0.40;
+    } else if (value.length >= 6) {
+      score += 0.20;
+    }
+    if (tieneLetra(value)) score += 0.30;
+    if (tieneNumero(value)) score += 0.30;
     return score.clamp(0.0, 1.0);
   }
 }

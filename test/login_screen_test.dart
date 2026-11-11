@@ -4,6 +4,7 @@ import 'package:easyhome/routes.dart';
 import 'package:easyhome/screens/crear_unirse_hogar_screen.dart';
 import 'package:easyhome/screens/dashboard_screen.dart';
 import 'package:easyhome/screens/login_screen.dart';
+import 'package:easyhome/screens/recuperar_contrasena_screen.dart';
 import 'package:easyhome/screens/registro_screen.dart';
 import 'package:easyhome/services/auth_service.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +41,7 @@ Future<void> _montar(WidgetTester tester, FakeAuthLogin fake) async {
       AppRoutes.registro: (_) => const RegistroScreen(),
       AppRoutes.hogar: (_) => const CrearUnirseHogarScreen(),
       AppRoutes.dashboard: (_) => const DashboardScreen(),
+      AppRoutes.recuperarContrasena: (_) => const RecuperarContrasenaScreen(),
     },
   ));
 }
@@ -134,15 +136,11 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('"¿Olvidaste tu contraseña?" abre el diálogo de restablecimiento', (tester) async {
+  testWidgets('"¿Olvidaste tu contraseña?" navega a recuperar contraseña', (tester) async {
     await _montar(tester, FakeAuthLogin());
-    final boton = find.byKey(const Key('enlace_olvido'));
-    expect(boton, findsOneWidget);
-    await tester.tap(boton);
+    await tester.tap(find.byKey(const Key('enlace_olvido')));
     await tester.pumpAndSettle();
-
-    expect(find.text('Restablecer contraseña'), findsOneWidget);
-    expect(find.text('Enviar enlace'), findsOneWidget);
+    expect(find.byType(RecuperarContrasenaScreen), findsOneWidget);
   });
 
   testWidgets('el enlace "Regístrate" navega al registro', (tester) async {
