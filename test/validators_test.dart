@@ -2,6 +2,13 @@ import 'package:easyhome/utils/validators.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('sanitizarTexto', () {
+    test('recorta espacios en blanco', () {
+      expect(Validators.sanitizarTexto('   hola mundo   '), 'hola mundo');
+      expect(Validators.sanitizarTexto(null), '');
+    });
+  });
+
   group('correo', () {
     test('acepta formato válido', () {
       expect(Validators.correo('algo@algo.com'), isNull);
@@ -14,11 +21,27 @@ void main() {
     });
   });
 
-  group('contraseña (registro)', () {
-    test('mínimo 6 caracteres', () {
+  group('contraseña (registro y política fuerte #22)', () {
+    test('mínimo 8 caracteres', () {
       expect(Validators.contrasena('12345'),
-          'La contraseña debe tener al menos 6 caracteres');
-      expect(Validators.contrasena('123456'), isNull);
+          'La contraseña debe tener al menos 8 caracteres');
+      expect(Validators.contrasena('Abc1234'),
+          'La contraseña debe tener al menos 8 caracteres');
+    });
+
+    test('requiere al menos una letra', () {
+      expect(Validators.contrasena('12345678'),
+          'La contraseña debe incluir al menos una letra');
+    });
+
+    test('requiere al menos un número', () {
+      expect(Validators.contrasena('abcdefgh'),
+          'La contraseña debe incluir al menos un número');
+    });
+
+    test('acepta contraseña válida con 8+ caracteres, letra y número', () {
+      expect(Validators.contrasena('Abcdefg1'), isNull);
+      expect(Validators.contrasena('pass12345'), isNull);
     });
   });
 
@@ -32,8 +55,8 @@ void main() {
 
   group('confirmar contraseña', () {
     test('debe coincidir', () {
-      expect(Validators.confirmarContrasena('abcdef', 'abcdef'), isNull);
-      expect(Validators.confirmarContrasena('abcdeX', 'abcdef'),
+      expect(Validators.confirmarContrasena('abcdef12', 'abcdef12'), isNull);
+      expect(Validators.confirmarContrasena('abcdeX12', 'abcdef12'),
           'Las contraseñas no coinciden');
     });
   });

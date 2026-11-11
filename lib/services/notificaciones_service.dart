@@ -223,7 +223,7 @@ class NotificacionesService {
         'fcmToken': token,
       }, SetOptions(merge: true));
     } catch (e) {
-      debugPrint('Notificaciones: Error al guardar token en usuarios/$uid: $e');
+      debugPrint('Notificaciones: Error al guardar token en Firestore: $e');
     }
   }
 
