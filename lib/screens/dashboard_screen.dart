@@ -1108,7 +1108,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           value: recurrente,
-                          activeColor: const Color(0xFF234E3F),
+                          activeThumbColor: const Color(0xFF234E3F),
                           onChanged: (val) {
                             setModalState(() {
                               recurrente = val;
@@ -1218,7 +1218,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 key: const Key('dropdown_reasignar_integrante'),
-                value: seleccionado,
+                initialValue: seleccionado,
                 decoration: const InputDecoration(
                   labelText: 'Nuevo responsable',
                   prefixIcon: Icon(Icons.person_outline_rounded),

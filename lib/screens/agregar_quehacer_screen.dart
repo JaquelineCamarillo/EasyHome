@@ -212,7 +212,7 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 key: const Key('dropdown_integrantes_quehacer'),
-                value: _responsableSeleccionado,
+                initialValue: _responsableSeleccionado,
                 decoration: const InputDecoration(
                   labelText: 'Asignar a',
                   prefixIcon: Icon(Icons.person_outline_rounded),
@@ -315,7 +315,7 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
                     style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                   value: _recurrente,
-                  activeColor: const Color(0xFF234E3F),
+                  activeThumbColor: const Color(0xFF234E3F),
                   onChanged: (val) {
                     setState(() {
                       _recurrente = val;
