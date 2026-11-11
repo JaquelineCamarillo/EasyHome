@@ -7,9 +7,19 @@ import 'package:easyhome/routes.dart';
 import 'package:easyhome/screens/dashboard_screen.dart';
 import 'package:easyhome/services/compras_service.dart';
 import 'package:easyhome/services/hogar_service.dart';
+import 'package:easyhome/services/notificaciones_service.dart';
 import 'package:easyhome/services/quehaceres_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class FakeNotificacionesTestService extends NotificacionesService {
+  @override
+  Future<String?> inicializar(String uid) async => 'fake_token';
+
+  @override
+  Future<void> limpiarToken(String uid) async {}
+}
+
 
 class FakeQuehaceresEditarService extends QuehaceresService {
   final quehaceresCtrl = StreamController<List<Quehacer>>.broadcast();
@@ -131,6 +141,7 @@ Future<void> _montar(
         comprasService: fakeCompras,
         hogarService: fakeHogares,
         quehaceresService: fakeQuehaceres,
+        notificacionesService: FakeNotificacionesTestService(),
         usuarioActualId: usuarioActualId,
         esAdministrador: esAdmin,
         vistaInicial: 1, // Quehaceres

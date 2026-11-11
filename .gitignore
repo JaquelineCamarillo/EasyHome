@@ -66,3 +66,14 @@ ios/Runner/GoogleService-Info.plist
 key.properties
 local.properties
 
+# Notificador local y secretos (notificaciones push, #21)
+notificador/serviceAccountKey.json
+notificador/.env
+notificador/node_modules/
+**/serviceAccount*.json
+service-account*.json
+
+# Archivos de plugins generados de Flutter
+macos/Flutter/GeneratedPluginRegistrant.swift
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugins.cmake
