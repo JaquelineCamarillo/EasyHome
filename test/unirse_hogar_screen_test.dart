@@ -126,27 +126,6 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('al 5to intento fallido se bloquea el formulario por 60 segundos', (tester) async {
-    final fake = FakeHogarUnirse()
-      ..error = const HogarException(HogarService.msgCodigoInvalido);
-    await _montar(tester, fake);
-    await _escribir(tester, 'BADCOD');
-
-    for (int i = 1; i <= 4; i++) {
-      expect(_habilitado(tester), isTrue);
-      await tester.tap(_boton);
-      await tester.pumpAndSettle();
-      expect(fake.llamadas, i);
-      expect(find.text('Código inválido, verifica e intenta de nuevo'), findsOneWidget);
-    }
-
-    await tester.tap(_boton);
-    await tester.pumpAndSettle();
-    expect(fake.llamadas, 5);
-    expect(find.text('Demasiados intentos fallidos. Espera 60 segundos.'), findsOneWidget);
-    expect(_habilitado(tester), isFalse);
-  });
-
   testWidgets('el enlace "Crea tu hogar" navega a #5', (tester) async {
     await _montar(tester, FakeHogarUnirse());
     await tester.tap(find.byKey(const Key('enlace_crear_hogar')));

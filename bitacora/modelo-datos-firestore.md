@@ -2,8 +2,7 @@
 
 > Tarjeta Trello #2 — Diseñar el modelo de datos en Firestore
 > Tarjeta Trello #20 — Rotación semanal automática
-> Tarjeta Trello #21 — Notificaciones push (FCM)
-> Última actualización: 10 de noviembre de 2026
+> Última actualización: 5 de noviembre de 2026
 
 ## 1. Colecciones
 
@@ -26,7 +25,6 @@
 | `esAdministrador` | `boolean` | `true` si el usuario administra el hogar (lo creó o fue promovido) |
 | `hogarId` | `string \| null` | Hogar al que pertenece. `null` si aún no se ha unido a ninguno |
 | `avatarColor` | `number` | Valor entero del color del avatar del usuario |
-| `fcmToken` | `string \| null` | *(#21)* Token de registro Firebase Cloud Messaging para notificaciones push en segundo plano |
 
 ### `productos/{productoId}`
 
@@ -56,7 +54,6 @@
 1. Todo documento de `productos` y `quehaceres` **debe** llevar `hogarId`, para poder filtrar por hogar en cada query (ej. `.where('hogarId', isEqualTo: miHogarId)`).
 2. Las reglas de seguridad de Firestore deben validar que el usuario autenticado solo lea/escriba documentos cuyo `hogarId` coincida con el `hogarId` guardado en su propio documento de `usuarios/{uid}`.
 3. Para quehaceres recurrentes (`recurrente: true`), al inicio de cada nueva semana (`claveSemana(DateTime.now()) != ultimaRotacion`), se reasignan en orden cíclico y su estado `hecho` se restablece a `false`.
-4. En `usuarios/{uid}.fcmToken`, cada usuario registra su token al autenticarse y otorgar permiso, y se borra (`FieldValue.delete()`) al cerrar sesión para garantizar la privacidad y evitar envíos espurios.
 
 ## 3. Reglas de seguridad vigentes (`firestore.rules`)
 
