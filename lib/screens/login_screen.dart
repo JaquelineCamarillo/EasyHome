@@ -195,7 +195,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             key: const Key('enlace_olvido'),
-                            onPressed: null,
+                            onPressed: _cargando
+                                ? null
+                                : () => Navigator.of(context).pushNamed(
+                                      AppRoutes.recuperarContrasena,
+                                    ),
                             child: const Text('¿Olvidaste tu contraseña?'),
                           ),
                         ),
