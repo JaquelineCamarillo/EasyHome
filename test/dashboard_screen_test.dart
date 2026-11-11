@@ -4,7 +4,10 @@ import 'package:easyhome/models/producto.dart';
 import 'package:easyhome/routes.dart';
 import 'package:easyhome/screens/dashboard_screen.dart';
 import 'package:easyhome/services/compras_service.dart';
+import 'package:easyhome/models/quehacer.dart';
 import 'package:easyhome/services/hogar_service.dart';
+import 'package:easyhome/services/notificaciones_service.dart';
+import 'package:easyhome/services/quehaceres_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -45,6 +48,22 @@ class FakeComprasService extends ComprasService {
   Future<void> eliminarProducto(String productoId) async {
     productoIdEliminado = productoId;
   }
+}
+
+class FakeQuehaceresDashboardService extends QuehaceresService {
+  @override
+  Future<int> rotarSiCorresponde(String hogarId, {DateTime? ahora}) async => 0;
+
+  @override
+  Stream<List<Quehacer>> observarQuehaceres(String hogarId) => Stream.value([]);
+}
+
+class FakeNotificacionesDashboardService extends NotificacionesService {
+  @override
+  Future<String?> inicializar(String uid) async => 'fake_token';
+
+  @override
+  Future<void> limpiarToken(String uid) async {}
 }
 
 class FakeHogarDashboardService extends HogarService {
@@ -88,6 +107,8 @@ Future<void> _montar(
         hogarId: hogarId,
         comprasService: fakeCompras,
         hogarService: fakeHogares,
+        quehaceresService: FakeQuehaceresDashboardService(),
+        notificacionesService: FakeNotificacionesDashboardService(),
       ),
     ),
   );

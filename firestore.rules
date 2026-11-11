@@ -18,7 +18,14 @@ service cloud.firestore {
     match /usuarios/{uid} {
       allow read: if estaAutenticado();
       allow create: if estaAutenticado() && request.auth.uid == uid;
-      allow update: if estaAutenticado() && request.auth.uid == uid;
+      allow update: if estaAutenticado() && (
+        // El usuario puede actualizar su propio token FCM (#21)
+        (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken']))
+        // O su perfil básico
+        || (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatarColor', 'fcmToken']))
+        // O vincularse / desvincularse de un hogar
+        || (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador']))
+      );
       allow delete: if false;
     }
 

@@ -51,6 +51,20 @@ android/app/build/
 # Widget Preview related
 .widget_preview/
 
-
 android/app/google-services.json 
 ios/Runner/GoogleService-Info.plist
+
+# Notificador local y secretos
+notificador/serviceAccountKey.json
+notificador/.env
+notificador/node_modules/
+**/serviceAccount*.json
+service-account*.json
+.env*
+*.jks
+key.properties
+
+# Archivos de plugins generados de Flutter
+macos/Flutter/GeneratedPluginRegistrant.swift
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugins.cmake
