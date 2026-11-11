@@ -40,8 +40,8 @@ Future<void> _montar(WidgetTester tester, FakeAuthService fake) async {
 Future<void> _llenar(WidgetTester tester,
     {String nombre = 'Ana Torres',
     String correo = 'ana@correo.com',
-    String pass = '123456',
-    String confirmar = '123456'}) async {
+    String pass = 'AnaTorres123',
+    String confirmar = 'AnaTorres123'}) async {
   await tester.enterText(find.byKey(const Key('campo_nombre')), nombre);
   await tester.enterText(find.byKey(const Key('campo_correo')), correo);
   await tester.enterText(find.byKey(const Key('campo_contrasena')), pass);
@@ -73,7 +73,7 @@ void main() {
     await _montar(tester, fake);
     await _llenar(tester, pass: '123', confirmar: '123');
 
-    expect(find.text('La contraseña debe tener al menos 6 caracteres'), findsOneWidget);
+    expect(find.text('La contraseña debe tener al menos 8 caracteres'), findsOneWidget);
     expect(_botonHabilitado(tester), isFalse);
     expect(fake.llamadas, 0);
   });
@@ -81,7 +81,7 @@ void main() {
   testWidgets('contraseñas distintas muestran error', (tester) async {
     final fake = FakeAuthService();
     await _montar(tester, fake);
-    await _llenar(tester, confirmar: '654321');
+    await _llenar(tester, confirmar: 'AnaTorres999');
 
     expect(find.text('Las contraseñas no coinciden'), findsOneWidget);
     expect(_botonHabilitado(tester), isFalse);

@@ -6,6 +6,7 @@ import '../models/quehacer.dart';
 import '../routes.dart';
 import '../services/compras_service.dart';
 import '../services/hogar_service.dart';
+import '../services/notificaciones_service.dart';
 import '../services/quehaceres_service.dart';
 import '../services/usuario_service.dart';
 import '../utils/app_feedback.dart';
@@ -20,6 +21,7 @@ class DashboardScreen extends StatefulWidget {
     this.hogarService,
     this.quehaceresService,
     this.usuarioService,
+    this.notificacionesService,
     this.usuarioActualId,
     this.esAdministrador,
     this.vistaInicial = 0,
@@ -33,6 +35,7 @@ class DashboardScreen extends StatefulWidget {
   final HogarService? hogarService;
   final QuehaceresService? quehaceresService;
   final UsuarioService? usuarioService;
+  final NotificacionesService? notificacionesService;
   final String? usuarioActualId;
   final bool? esAdministrador;
   final int vistaInicial;
@@ -50,6 +53,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       widget.quehaceresService ?? QuehaceresService();
   late final UsuarioService _usuarios =
       widget.usuarioService ?? UsuarioService();
+  late final NotificacionesService _notificaciones =
+      widget.notificacionesService ?? NotificacionesService();
 
   late int _indiceSeccion = widget.vistaInicial;
   String _filtroQuehaceres = 'mis';
@@ -73,6 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _busquedaCtrl.dispose();
+    _notificaciones.dispose();
     super.dispose();
   }
 
@@ -94,6 +100,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _productosStream = _compras.observarProductos(hogarId);
         _cargandoInicial = false;
       });
+
+      // Rotación semanal automática (#20): se dispara al resolver el hogar
+      _ejecutarRotacionSemanal(hogarId);
+
+      // Inicializar notificaciones push FCM (#21)
+      final uid = widget.usuarioActualId ?? _usuarios.usuarioActualId;
+      if (uid != null && uid.isNotEmpty) {
+        _notificaciones.onMensajeEnPrimerPlano = (mensaje) {
+          if (!mounted) return;
+          final titulo = mensaje.notification?.title ?? mensaje.data['titulo'] ?? 'EasyHome';
+          final cuerpo = mensaje.notification?.body ?? mensaje.data['cuerpo'] ?? '';
+          final texto = cuerpo.isNotEmpty ? '$titulo: $cuerpo' : titulo;
+          AppFeedback.mostrarInfo(context, texto);
+        };
+        _notificaciones.onToqueNotificacion = (mensaje) {
+          if (!mounted) return;
+          final seccion = mensaje.data['seccion'];
+          if (seccion == 'quehaceres') {
+            setState(() => _indiceSeccion = 1);
+          } else if (seccion == 'compras') {
+            setState(() => _indiceSeccion = 0);
+          }
+        };
+        _notificaciones.inicializar(uid);
+      }
     } on HogarException catch (e) {
       if (mounted) {
         setState(() {
@@ -108,6 +139,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _cargandoInicial = false;
         });
       }
+    }
+  }
+
+  Future<void> _ejecutarRotacionSemanal(String hogarId) async {
+    try {
+      final rotados = await _quehaceres.rotarSiCorresponde(hogarId);
+      if (rotados > 0 && mounted) {
+        AppFeedback.mostrarExito(
+          context,
+          'Se rotaron los quehaceres de la semana',
+        );
+      }
+    } catch (_) {
+      // Error silencioso: no bloquea el dashboard
     }
   }
 
@@ -760,6 +805,566 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _cambiarEstadoQuehacer(
+      Quehacer quehacer, String nombreResponsable) async {
+    final uidActual =
+        widget.usuarioActualId ?? _usuarios.usuarioActualId ?? '';
+
+    if (quehacer.asignadoA != uidActual) {
+      AppFeedback.mostrarInfo(
+          context, 'Solo $nombreResponsable puede marcar este quehacer');
+      return;
+    }
+
+    final nuevoEstado = !quehacer.hecho;
+    try {
+      await _quehaceres.marcarHecho(
+        quehacerId: quehacer.id,
+        asignadoA: quehacer.asignadoA,
+        nuevoEstado: nuevoEstado,
+        uidActual: uidActual,
+      );
+      if (!mounted) return;
+      AppFeedback.mostrarExito(
+        context,
+        nuevoEstado ? 'Quehacer completado' : 'Quehacer pendiente',
+      );
+    } on QuehaceresException catch (e) {
+      if (!mounted) return;
+      AppFeedback.mostrarError(context, e.mensaje);
+    } catch (_) {
+      if (!mounted) return;
+      AppFeedback.mostrarError(
+          context, QuehaceresService.msgErrorActualizar);
+    }
+  }
+
+  Future<void> _mostrarMenuOpcionesQuehacer(
+      Quehacer quehacer, List<Integrante> integrantes, bool esAdmin) async {
+    if (!esAdmin) {
+      AppFeedback.mostrarError(context, QuehaceresService.msgSinPermiso);
+      return;
+    }
+
+    final opcion = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Text(
+                  quehacer.titulo,
+                  key: const Key('titulo_menu_opciones_quehacer'),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E2D27),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                key: const Key('opcion_editar_quehacer'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F1EC),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.edit_outlined,
+                    color: Color(0xFF234E3F),
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'Editar',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+                subtitle: const Text('Modificar título y fecha límite'),
+                onTap: () => Navigator.of(ctx).pop('editar'),
+              ),
+              ListTile(
+                key: const Key('opcion_reasignar_quehacer'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.swap_horiz_rounded,
+                    color: Color(0xFFB45309),
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'Reasignar',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+                subtitle: const Text('Cambiar el integrante responsable'),
+                onTap: () => Navigator.of(ctx).pop('reasignar'),
+              ),
+              ListTile(
+                key: const Key('opcion_eliminar_quehacer'),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDE8E6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: Color(0xFFC24134),
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'Eliminar',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: Color(0xFFC24134),
+                  ),
+                ),
+                subtitle: const Text('Quitar este quehacer de la lista'),
+                onTap: () => Navigator.of(ctx).pop('eliminar'),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || opcion == null) return;
+
+    if (opcion == 'editar') {
+      await _mostrarFormularioEditarQuehacer(quehacer, esAdmin);
+    } else if (opcion == 'reasignar') {
+      await _mostrarDialogoReasignarQuehacer(quehacer, integrantes, esAdmin);
+    } else if (opcion == 'eliminar') {
+      await _confirmarEliminarQuehacer(quehacer, esAdmin);
+    }
+  }
+
+  Future<void> _mostrarFormularioEditarQuehacer(
+      Quehacer quehacer, bool esAdmin) async {
+    if (!esAdmin) {
+      AppFeedback.mostrarError(context, QuehaceresService.msgSinPermiso);
+      return;
+    }
+
+    final formKey = GlobalKey<FormState>();
+    final tituloCtrl = TextEditingController(text: quehacer.titulo);
+    DateTime? fechaSeleccionada = quehacer.fechaLimite;
+    bool recurrente = quehacer.recurrente;
+    bool guardando = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          Future<void> elegirFecha() async {
+            final ahora = DateTime.now();
+            final elegida = await showDatePicker(
+              context: ctx,
+              initialDate: fechaSeleccionada ?? ahora,
+              firstDate: DateTime(ahora.year - 1),
+              lastDate: DateTime(ahora.year + 5),
+            );
+            if (elegida != null) {
+              setModalState(() {
+                fechaSeleccionada = elegida;
+              });
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: Material(
+              color: Colors.white,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+              clipBehavior: Clip.antiAlias,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.black12,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const Row(
+                        children: [
+                          Icon(Icons.edit_note_rounded,
+                              color: Color(0xFF234E3F), size: 26),
+                          SizedBox(width: 8),
+                          Text(
+                            'Editar quehacer',
+                            style: TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E2D27),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      TextFormField(
+                        key: const Key('campo_editar_titulo_quehacer'),
+                        controller: tituloCtrl,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          labelText: 'Título del quehacer',
+                          prefixIcon: Icon(Icons.task_alt_rounded),
+                        ),
+                        validator: Validators.tituloQuehacer,
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F5EE),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE8E4DA)),
+                        ),
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.calendar_month_rounded,
+                                    size: 18, color: Color(0xFF234E3F)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  fechaSeleccionada == null
+                                      ? 'Sin fecha límite'
+                                      : '${fechaSeleccionada!.day.toString().padLeft(2, '0')}/${fechaSeleccionada!.month.toString().padLeft(2, '0')}/${fechaSeleccionada!.year}',
+                                  key: const Key('texto_fecha_edicion'),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Wrap(
+                              spacing: 6,
+                              children: [
+                                if (fechaSeleccionada != null)
+                                  IconButton(
+                                    key: const Key(
+                                        'boton_quitar_fecha_edicion'),
+                                    icon: const Icon(Icons.close_rounded,
+                                        size: 18, color: Colors.redAccent),
+                                    onPressed: () {
+                                      setModalState(() {
+                                        fechaSeleccionada = null;
+                                      });
+                                    },
+                                  ),
+                                FilledButton.tonal(
+                                  key: const Key(
+                                      'boton_editar_fecha_quehacer'),
+                                  onPressed: elegirFecha,
+                                  child: Text(fechaSeleccionada == null
+                                      ? 'Elegir fecha'
+                                      : 'Cambiar'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Material(
+                        color: const Color(0xFFF7F5EE),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: const BorderSide(color: Color(0xFFE8E4DA)),
+                        ),
+                        child: SwitchListTile(
+                          key: const Key('switch_recurrente_edicion'),
+                          title: const Text(
+                            'Repetir cada semana (rota entre integrantes)',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          value: recurrente,
+                          activeThumbColor: const Color(0xFF234E3F),
+                          onChanged: (val) {
+                            setModalState(() {
+                              recurrente = val;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      FilledButton(
+                        key: const Key('boton_guardar_edicion_quehacer'),
+                        onPressed: guardando
+                            ? null
+                            : () async {
+                                if (!(formKey.currentState?.validate() ??
+                                    false)) {
+                                  return;
+                                }
+                                setModalState(() => guardando = true);
+                                try {
+                                  await _quehaceres.actualizarQuehacer(
+                                    quehacerId: quehacer.id,
+                                    titulo: tituloCtrl.text.trim(),
+                                    fechaLimite: fechaSeleccionada,
+                                    limpiarFecha: fechaSeleccionada == null,
+                                    esAdmin: esAdmin,
+                                    recurrente: recurrente,
+                                  );
+                                  if (!ctx.mounted) return;
+                                  Navigator.of(ctx).pop();
+                                  if (!mounted) return;
+                                  AppFeedback.mostrarExito(
+                                    context,
+                                    'Quehacer actualizado',
+                                  );
+                                } on QuehaceresException catch (e) {
+                                  if (!ctx.mounted) return;
+                                  setModalState(() => guardando = false);
+                                  AppFeedback.mostrarError(ctx, e.mensaje);
+                                } catch (_) {
+                                  if (!ctx.mounted) return;
+                                  setModalState(() => guardando = false);
+                                  AppFeedback.mostrarError(
+                                    ctx,
+                                    QuehaceresService.msgErrorActualizar,
+                                  );
+                                }
+                              },
+                        child: guardando
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Guardar cambios'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _mostrarDialogoReasignarQuehacer(
+      Quehacer quehacer, List<Integrante> integrantes, bool esAdmin) async {
+    if (!esAdmin) {
+      AppFeedback.mostrarError(context, QuehaceresService.msgSinPermiso);
+      return;
+    }
+
+    String? seleccionado = quehacer.asignadoA;
+    if (!integrantes.any((i) => i.uid == seleccionado) &&
+        integrantes.isNotEmpty) {
+      seleccionado = integrantes.first.uid;
+    }
+
+    final reasignar = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.swap_horiz_rounded, color: Color(0xFFB45309)),
+              SizedBox(width: 8),
+              Text(
+                'Reasignar quehacer',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Selecciona el nuevo responsable para "${quehacer.titulo}":',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                key: const Key('dropdown_reasignar_integrante'),
+                initialValue: seleccionado,
+                decoration: const InputDecoration(
+                  labelText: 'Nuevo responsable',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
+                ),
+                items: integrantes.map((i) {
+                  return DropdownMenuItem<String>(
+                    value: i.uid,
+                    child: Text(i.nombre),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setDialogState(() {
+                    seleccionado = val;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              key: const Key('boton_cancelar_reasignar'),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              key: const Key('boton_confirmar_reasignar'),
+              onPressed: () => Navigator.of(ctx).pop(seleccionado),
+              child: const Text('Reasignar'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (reasignar != null && reasignar.isNotEmpty && mounted) {
+      try {
+        await _quehaceres.reasignarQuehacer(
+          quehacerId: quehacer.id,
+          nuevoAsignadoA: reasignar,
+          hogarId: quehacer.hogarId,
+          esAdmin: esAdmin,
+        );
+        if (!mounted) return;
+        AppFeedback.mostrarExito(context, 'Quehacer reasignado');
+      } on QuehaceresException catch (e) {
+        if (!mounted) return;
+        AppFeedback.mostrarError(context, e.mensaje);
+      } catch (_) {
+        if (!mounted) return;
+        AppFeedback.mostrarError(
+            context, QuehaceresService.msgErrorActualizar);
+      }
+    }
+  }
+
+  Future<void> _confirmarEliminarQuehacer(
+      Quehacer quehacer, bool esAdmin) async {
+    if (!esAdmin) {
+      AppFeedback.mostrarError(context, QuehaceresService.msgSinPermiso);
+      return;
+    }
+
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text(
+              'Eliminar quehacer',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Text(
+          '¿Seguro que quieres eliminar este quehacer ("${quehacer.titulo}")?',
+          key: const Key('mensaje_confirmar_eliminar_quehacer'),
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            key: const Key('boton_cancelar_eliminar_quehacer'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            key: const Key('boton_confirmar_eliminar_quehacer'),
+            style:
+                FilledButton.styleFrom(backgroundColor: const Color(0xFFC24134)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true && mounted) {
+      try {
+        await _quehaceres.eliminarQuehacer(
+          quehacerId: quehacer.id,
+          esAdmin: esAdmin,
+        );
+        if (!mounted) return;
+        AppFeedback.mostrarInfo(context, 'Quehacer eliminado');
+      } on QuehaceresException catch (e) {
+        if (!mounted) return;
+        AppFeedback.mostrarError(context, e.mensaje);
+      } catch (_) {
+        if (!mounted) return;
+        AppFeedback.mostrarError(
+            context, QuehaceresService.msgErrorEliminar);
+      }
+    }
+  }
+
   Widget _buildVistaQuehaceres(ThemeData tema, String hogarId) {
     final uidActual = widget.usuarioActualId ?? _usuarios.usuarioActualId ?? '';
 
@@ -983,6 +1588,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 final q = lista[index];
                                 final responsable =
                                     integrantesMap[q.asignadoA] ?? 'Integrante';
+                                final esResponsable = (q.asignadoA == uidActual);
 
                                 return Card(
                                   key: Key('item_quehacer_${q.id}'),
@@ -992,141 +1598,265 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     side: const BorderSide(
                                         color: Color(0xFFE8E4DA)),
                                   ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Wrap(
-                                          alignment: WrapAlignment.spaceBetween,
-                                          crossAxisAlignment:
-                                              WrapCrossAlignment.center,
-                                          spacing: 8,
-                                          runSpacing: 4,
-                                          children: [
-                                            Text(
-                                              q.titulo,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () => _cambiarEstadoQuehacer(
+                                        q, responsable),
+                                    onLongPress: () =>
+                                        _mostrarMenuOpcionesQuehacer(
+                                            q, integrantes, esAdmin),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 2),
+                                            child: Checkbox(
                                               key: Key(
-                                                  'titulo_quehacer_${q.id}'),
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                decoration: q.hecho
-                                                    ? TextDecoration.lineThrough
-                                                    : null,
-                                                color: q.hecho
-                                                    ? Colors.black45
-                                                    : const Color(0xFF1E2D27),
-                                              ),
+                                                  'checkbox_quehacer_${q.id}'),
+                                              value: q.hecho,
+                                              activeColor:
+                                                  const Color(0xFF234E3F),
+                                              onChanged: esResponsable
+                                                  ? (_) =>
+                                                      _cambiarEstadoQuehacer(
+                                                          q, responsable)
+                                                  : null,
                                             ),
-                                            Container(
-                                              key: Key('badge_estado_${q.id}'),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: q.hecho
-                                                    ? const Color(0xFFE8F1EC)
-                                                    : const Color(0xFFFEF3C7),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              child: Wrap(
-                                                crossAxisAlignment:
-                                                    WrapCrossAlignment.center,
-                                                spacing: 4,
-                                                children: [
-                                                  Icon(
-                                                    q.hecho
-                                                        ? Icons
-                                                            .check_circle_rounded
-                                                        : Icons
-                                                            .pending_actions_rounded,
-                                                    size: 16,
-                                                    color: q.hecho
-                                                        ? const Color(0xFF234E3F)
-                                                        : const Color(
-                                                            0xFFB45309),
-                                                  ),
-                                                  Text(
-                                                    q.hecho
-                                                        ? 'Hecho'
-                                                        : 'Pendiente',
-                                                    key: Key(
-                                                        'texto_estado_${q.id}'),
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: q.hecho
-                                                          ? const Color(
-                                                              0xFF234E3F)
-                                                          : const Color(
-                                                              0xFFB45309),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Wrap(
-                                          spacing: 16,
-                                          runSpacing: 6,
-                                          crossAxisAlignment:
-                                              WrapCrossAlignment.center,
-                                          children: [
-                                            Wrap(
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
                                               crossAxisAlignment:
-                                                  WrapCrossAlignment.center,
-                                              spacing: 4,
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                const Icon(
-                                                  Icons.person_outline_rounded,
-                                                  size: 16,
-                                                  color: Colors.black54,
-                                                ),
-                                                Text(
-                                                  responsable,
-                                                  key: Key(
-                                                      'responsable_quehacer_${q.id}'),
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.black87,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
+                                                Wrap(
+                                                  alignment: WrapAlignment
+                                                      .spaceBetween,
+                                                  crossAxisAlignment:
+                                                      WrapCrossAlignment
+                                                          .center,
+                                                  spacing: 8,
+                                                  runSpacing: 4,
+                                                  children: [
+                                                    Text(
+                                                      q.titulo,
+                                                      key: Key(
+                                                          'titulo_quehacer_${q.id}'),
+                                                      style: TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        decoration: q.hecho
+                                                            ? TextDecoration
+                                                                .lineThrough
+                                                            : null,
+                                                        color: q.hecho
+                                                            ? Colors.black45
+                                                            : const Color(
+                                                                0xFF1E2D27),
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                       key: Key(
+                                                           'badge_estado_${q.id}'),
+                                                       padding: const EdgeInsets
+                                                           .symmetric(
+                                                           horizontal: 10,
+                                                           vertical: 4),
+                                                       decoration:
+                                                           BoxDecoration(
+                                                         color: q.hecho
+                                                             ? const Color(
+                                                                 0xFFE8F1EC)
+                                                             : const Color(
+                                                                 0xFFFEF3C7),
+                                                         borderRadius:
+                                                             BorderRadius
+                                                                 .circular(12),
+                                                       ),
+                                                       child: Wrap(
+                                                         crossAxisAlignment:
+                                                             WrapCrossAlignment
+                                                                 .center,
+                                                         spacing: 4,
+                                                         children: [
+                                                           Icon(
+                                                             q.hecho
+                                                                 ? Icons
+                                                                     .check_circle_rounded
+                                                                 : Icons
+                                                                     .pending_actions_rounded,
+                                                             size: 16,
+                                                             color: q.hecho
+                                                                 ? const Color(
+                                                                     0xFF234E3F)
+                                                                 : const Color(
+                                                                     0xFFB45309),
+                                                           ),
+                                                           Text(
+                                                             q.hecho
+                                                                 ? 'Hecho'
+                                                                 : 'Pendiente',
+                                                             key: Key(
+                                                                 'texto_estado_${q.id}'),
+                                                             style: TextStyle(
+                                                               fontSize: 12,
+                                                               fontWeight:
+                                                                   FontWeight
+                                                                       .bold,
+                                                               color: q.hecho
+                                                                   ? const Color(
+                                                                       0xFF234E3F)
+                                                                   : const Color(
+                                                                       0xFFB45309),
+                                                             ),
+                                                           ),
+                                                         ],
+                                                       ),
+                                                     ),
+                                                     if (q.recurrente)
+                                                       Container(
+                                                         key: Key(
+                                                             'badge_recurrente_${q.id}'),
+                                                         padding:
+                                                             const EdgeInsets
+                                                                 .symmetric(
+                                                           horizontal: 8,
+                                                           vertical: 3,
+                                                         ),
+                                                         decoration:
+                                                             BoxDecoration(
+                                                           color: const Color(
+                                                               0xFFE0F2FE),
+                                                           borderRadius:
+                                                               BorderRadius
+                                                                   .circular(
+                                                                       12),
+                                                           border: Border.all(
+                                                             color: const Color(
+                                                                 0xFFBAE6FD),
+                                                           ),
+                                                         ),
+                                                         child: const Wrap(
+                                                           crossAxisAlignment:
+                                                               WrapCrossAlignment
+                                                                   .center,
+                                                           spacing: 4,
+                                                           children: [
+                                                             Icon(
+                                                               Icons
+                                                                   .repeat_rounded,
+                                                               size: 14,
+                                                               color: Color(
+                                                                   0xFF0369A1),
+                                                             ),
+                                                             Text(
+                                                               'Semanal',
+                                                               style: TextStyle(
+                                                                 fontSize: 11,
+                                                                 fontWeight:
+                                                                     FontWeight
+                                                                         .bold,
+                                                                 color: Color(
+                                                                     0xFF0369A1),
+                                                               ),
+                                                             ),
+                                                           ],
+                                                         ),
+                                                       ),
+                                                   ],
+                                                 ),
+                                                 const SizedBox(height: 10),
+                                                Wrap(
+                                                  spacing: 16,
+                                                  runSpacing: 6,
+                                                  crossAxisAlignment:
+                                                      WrapCrossAlignment
+                                                          .center,
+                                                  children: [
+                                                    Wrap(
+                                                      crossAxisAlignment:
+                                                          WrapCrossAlignment
+                                                              .center,
+                                                      spacing: 4,
+                                                      children: [
+                                                        const Icon(
+                                                          Icons
+                                                              .person_outline_rounded,
+                                                          size: 16,
+                                                          color:
+                                                              Colors.black54,
+                                                        ),
+                                                        Text(
+                                                          responsable,
+                                                          key: Key(
+                                                              'responsable_quehacer_${q.id}'),
+                                                          style:
+                                                              const TextStyle(
+                                                            fontSize: 13,
+                                                            color:
+                                                                Colors.black87,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    if (q.fechaLimite != null)
+                                                      Wrap(
+                                                        crossAxisAlignment:
+                                                            WrapCrossAlignment
+                                                                .center,
+                                                        spacing: 4,
+                                                        children: [
+                                                          const Icon(
+                                                            Icons
+                                                                .calendar_today_outlined,
+                                                            size: 14,
+                                                            color:
+                                                                Colors.black54,
+                                                          ),
+                                                          Text(
+                                                            '${q.fechaLimite!.day.toString().padLeft(2, '0')}/${q.fechaLimite!.month.toString().padLeft(2, '0')}/${q.fechaLimite!.year}',
+                                                            key: Key(
+                                                                'fecha_quehacer_${q.id}'),
+                                                            style:
+                                                                const TextStyle(
+                                                              fontSize: 13,
+                                                              color: Colors
+                                                                  .black87,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
-                                            if (q.fechaLimite != null)
-                                              Wrap(
-                                                crossAxisAlignment:
-                                                    WrapCrossAlignment.center,
-                                                spacing: 4,
-                                                children: [
-                                                  const Icon(
-                                                    Icons
-                                                        .calendar_today_outlined,
-                                                    size: 14,
-                                                    color: Colors.black54,
-                                                  ),
-                                                  Text(
-                                                    '${q.fechaLimite!.day.toString().padLeft(2, '0')}/${q.fechaLimite!.month.toString().padLeft(2, '0')}/${q.fechaLimite!.year}',
-                                                    key: Key(
-                                                        'fecha_quehacer_${q.id}'),
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      color: Colors.black87,
-                                                    ),
-                                                  ),
-                                                ],
+                                          ),
+                                          if (esAdmin)
+                                            IconButton(
+                                              key: Key(
+                                                  'boton_opciones_quehacer_${q.id}'),
+                                              tooltip: 'Opciones del quehacer',
+                                              icon: const Icon(
+                                                Icons.more_vert_rounded,
+                                                size: 20,
+                                                color: Colors.black45,
                                               ),
-                                          ],
-                                        ),
-                                      ],
+                                              onPressed: () =>
+                                                  _mostrarMenuOpcionesQuehacer(
+                                                      q,
+                                                      integrantes,
+                                                      esAdmin),
+                                            ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );

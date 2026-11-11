@@ -13,6 +13,7 @@ void main() {
         'hecho': true,
         'creadoPor': 'admin1',
         'fechaLimite': Timestamp.fromDate(fecha),
+        'recurrente': true,
       };
 
       final quehacer = Quehacer.fromMap('q1', map);
@@ -24,6 +25,7 @@ void main() {
       expect(quehacer.hecho, true);
       expect(quehacer.creadoPor, 'admin1');
       expect(quehacer.fechaLimite, fecha);
+      expect(quehacer.recurrente, true);
     });
 
     test('fromMap maneja valores por defecto si faltan campos', () {
@@ -36,6 +38,7 @@ void main() {
       expect(quehacer.hecho, false);
       expect(quehacer.creadoPor, '');
       expect(quehacer.fechaLimite, isNull);
+      expect(quehacer.recurrente, false);
     });
 
     test('toMap y copyWith funcionan como se espera', () {
@@ -48,6 +51,7 @@ void main() {
         hecho: false,
         creadoPor: 'admin1',
         fechaLimite: fecha,
+        recurrente: true,
       );
 
       final map = quehacer.toMap();
@@ -57,11 +61,17 @@ void main() {
       expect(map['hecho'], false);
       expect(map['creadoPor'], 'admin1');
       expect(map['fechaLimite'], isA<Timestamp>());
+      expect(map['recurrente'], true);
 
-      final actualizado = quehacer.copyWith(hecho: true, titulo: 'Barrer todo');
+      final actualizado = quehacer.copyWith(
+        hecho: true,
+        titulo: 'Barrer todo',
+        recurrente: false,
+      );
       expect(actualizado.hecho, true);
       expect(actualizado.titulo, 'Barrer todo');
       expect(actualizado.asignadoA, 'u2');
+      expect(actualizado.recurrente, false);
 
       final sinFecha = actualizado.copyWith(limpiarFechaLimite: true);
       expect(sinFecha.fechaLimite, isNull);
