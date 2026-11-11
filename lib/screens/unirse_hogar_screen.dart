@@ -128,7 +128,7 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
                           BoxShadow(
                             color: tema.colorScheme.primary.withValues(alpha: 0.3),
                             blurRadius: 16,
-                            offset: const verticalOffset(6),
+                            offset: const Offset(0, 6),
                           ),
                         ],
                       ),
@@ -283,8 +283,4 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
       ),
     );
   }
-}
-
-class verticalOffset extends Offset {
-  const verticalOffset(double dy) : super(0, dy);
 }

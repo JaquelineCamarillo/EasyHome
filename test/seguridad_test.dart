@@ -44,9 +44,9 @@ void main() {
   });
 
   group('Seguridad: Fortaleza y políticas de contraseñas', () {
-    test('exige mínimo 6 caracteres para registro (estándar mínimo Firebase Auth)', () {
-      expect(Validators.contrasena('12345'), 'La contraseña debe tener al menos 6 caracteres');
-      expect(Validators.contrasena('123456'), isNull);
+    test('exige mínimo 8 caracteres con letra y número para registro', () {
+      expect(Validators.contrasena('12345'), contains('al menos 8 caracteres'));
+      expect(Validators.contrasena('Password123'), isNull);
     });
 
     test('evaluador de entropía de contraseña califica correctamente la complejidad', () {
