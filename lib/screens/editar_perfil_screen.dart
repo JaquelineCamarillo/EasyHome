@@ -113,7 +113,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
           final passText = nuevaCtrl.text;
-          final tieneMin8 = Validators.tieneMinimo8(passText);
+          final tieneMin6 = Validators.tieneMinimo6(passText);
           final tieneLetra = Validators.tieneLetra(passText);
           final tieneNum = Validators.tieneNumero(passText);
           final nivel = Validators.nivelSeguridadContrasena(passText);
@@ -200,7 +200,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Cumplido: ${tieneMin8 ? "✓ 8+ carac." : ""} ${tieneLetra ? "✓ Letras" : ""} ${tieneNum ? "✓ Números" : ""}',
+                        'Cumplido: ${tieneMin6 ? "✓ 6+ carac." : ""} ${tieneLetra ? "✓ Letras" : ""} ${tieneNum ? "✓ Números" : ""}',
                         style: const TextStyle(fontSize: 11, color: Colors.black54),
                       ),
                     ],

@@ -55,17 +55,9 @@ android/app/build/
 android/app/google-services.json 
 ios/Runner/GoogleService-Info.plist
 
-# Notificador local y secretos
-notificador/serviceAccountKey.json
-notificador/.env
-notificador/node_modules/
-firestore-tests/node_modules/
-**/node_modules/
-**/serviceAccount*.json
-service-account*.json
-
 # Environment and secrets
-.env*
+.env
+.env.*
 *.env
 
 # Android signing keys and local properties
@@ -74,7 +66,3 @@ service-account*.json
 key.properties
 local.properties
 
-# Archivos de plugins generados de Flutter
-macos/Flutter/GeneratedPluginRegistrant.swift
-windows/flutter/generated_plugin_registrant.cc
-windows/flutter/generated_plugins.cmake

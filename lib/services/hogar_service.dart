@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import '../models/hogar.dart';
 import '../models/integrante.dart';
 import '../utils/codigo_invitacion.dart';
-import 'notificaciones_service.dart';
 
 /// Error ya traducido, listo para mostrarse al usuario.
 class HogarException implements Exception {
@@ -20,22 +19,14 @@ enum _ResultadoUnion { unido, yaEsteHogar, yaOtroHogar, sinPerfil }
 
 /// Operaciones sobre hogares en Firestore.
 class HogarService {
-  HogarService({
-    FirebaseAuth? auth,
-    FirebaseFirestore? firestore,
-    NotificacionesService? notificaciones,
-  })  : _authOverride = auth,
-        _firestoreOverride = firestore,
-        _notificacionesOverride = notificaciones;
+  HogarService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+      : _authOverride = auth,
+        _firestoreOverride = firestore;
 
   final FirebaseAuth? _authOverride;
   final FirebaseFirestore? _firestoreOverride;
-  final NotificacionesService? _notificacionesOverride;
-
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
   FirebaseFirestore get _db => _firestoreOverride ?? FirebaseFirestore.instance;
-  NotificacionesService get _notificaciones =>
-      _notificacionesOverride ?? NotificacionesService();
 
   // Crear hogar
   static const msgNoSePudoCrear = 'No se pudo crear el hogar, intenta de nuevo';
@@ -156,15 +147,9 @@ class HogarService {
     }
   }
 
-  /// Cierra la sesión del usuario actual limpiando el token FCM (#21).
+  /// Cierra la sesión del usuario actual.
   Future<void> cerrarSesion() async {
     try {
-      final uid = _auth.currentUser?.uid;
-      if (uid != null && uid.isNotEmpty) {
-        try {
-          await _notificaciones.limpiarToken(uid);
-        } catch (_) {}
-      }
       await _auth.signOut();
     } catch (_) {}
   }
