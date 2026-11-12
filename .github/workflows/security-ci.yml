@@ -2,13 +2,13 @@ name: Security & Quality CI
 
 on:
   push:
-    branches: [ main, develop, feat/*, feature/* ]
+    branches: [ main, develop, feat/*, feature/*, fix/* ]
   pull_request:
     branches: [ main, develop ]
 
 jobs:
-  analyze_and_test:
-    name: Flutter Analyze & Automated Tests
+  flutter_security_and_tests:
+    name: Flutter Analyze, Dependencies & Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -21,11 +21,42 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias de Flutter
         run: flutter pub get
+
+      - name: Auditoría de dependencias desactualizadas (flutter pub outdated)
+        run: flutter pub outdated
 
       - name: Análisis estático de código (flutter analyze)
         run: flutter analyze
 
       - name: Ejecutar Suite de Pruebas y Seguridad (flutter test)
         run: flutter test --coverage
+
+  node_notificador_tests:
+    name: Node.js FCM Notifier Security & Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: notificador
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: notificador/package-lock.json
+
+      - name: Instalar dependencias de Node.js
+        run: npm ci
+
+      - name: Auditoría de seguridad de dependencias (npm audit)
+        run: npm audit --audit-level=high || true
+
+      - name: Ejecutar Suite de Pruebas del Notificador FCM (Jest)
+        run: npm test

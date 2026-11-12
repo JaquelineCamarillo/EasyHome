@@ -23,8 +23,11 @@ service cloud.firestore {
 
     // --- Colección: usuarios ---
     match /usuarios/{uid} {
-      // Lectura: Cualquier usuario autenticado (necesario para ver compañeros de hogar y perfiles)
-      allow read: if estaAutenticado();
+      // Lectura: Únicamente el propio usuario o integrantes que pertenezcan a su mismo hogar
+      allow read: if estaAutenticado() && (
+        request.auth.uid == uid ||
+        (resource.data.hogarId != null && resource.data.hogarId == miHogarId())
+      );
 
       // Creación: Al registrarse, solo puede crear su propio perfil con esAdministrador en false y sin hogar
       allow create: if estaAutenticado()
@@ -45,12 +48,13 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatarColor'])
           && (!('nombre' in request.resource.data) || esTextoValido(request.resource.data.nombre, 1, 60)))
 
-        // Caso 2: Unirse a un hogar (NO puede ponerse admin)
+        // Caso 2: Unirse a un hogar (NO puede ponerse admin y debe existir el hogar)
         || (request.auth.uid == uid
           && resource.data.hogarId == null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador'])
           && request.resource.data.esAdministrador == false
-          && request.resource.data.hogarId is string)
+          && request.resource.data.hogarId is string
+          && exists(/databases/$(database)/documents/hogares/$(request.resource.data.hogarId)))
 
         // Caso 3: Crear hogar (se vuelve admin solo si en la misma tx creó el hogar)
         || (request.auth.uid == uid
@@ -166,6 +170,12 @@ service cloud.firestore {
     // --- Colección en desuso o cerrada: codigosInvitacion ---
     // Los códigos se gestionan de forma segura embebidos en el documento de cada hogar
     match /codigosInvitacion/{codigoId} {
+      allow read, write: if false;
+    }
+
+    // --- Regla por defecto (Default Deny / Catch-All) ---
+    // Deniega explícitamente lectura y escritura a cualquier colección o documento no declarado
+    match /{document=**} {
       allow read, write: if false;
     }
   }
