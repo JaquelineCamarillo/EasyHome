@@ -30,6 +30,8 @@ class AuthService {
   static const msgGenerico = 'Ocurrió un error, intenta de nuevo';
   static const msgCredencialesIncorrectas = 'Correo o contraseña incorrectos';
   static const msgDemasiadosIntentos = 'Demasiados intentos, espera un momento';
+  static const msgRecuperacionEnviada =
+      'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña';
 
   /// Crea el usuario en Firebase Auth y su documento en `usuarios/{uid}`.
   /// Lanza [AuthException] con un mensaje en español si algo falla.
@@ -99,6 +101,40 @@ class AuthService {
         await _auth.signOut();
       } catch (_) {}
       throw const AuthException(msgSinConexion);
+    }
+  }
+
+  /// Envía correo de restablecimiento de contraseña.
+  /// Implementa control anti-enumeración: si el correo no existe, no lo revela
+  /// al cliente para evitar enumeración maliciosa de cuentas.
+  Future<void> recuperarContrasena(String correo) async {
+    final correoLimpio = correo.trim();
+    if (correoLimpio.isEmpty) {
+      throw const AuthException('Ingresa tu correo');
+    }
+    try {
+      await _auth.sendPasswordResetEmail(email: correoLimpio);
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Auth error recuperarContrasena: ${e.code}');
+      if (e.code == 'network-request-failed') {
+        throw const AuthException(msgSinConexion);
+      }
+      if (e.code == 'invalid-email') {
+        throw const AuthException('Correo inválido');
+      }
+      // Si el código es 'user-not-found', silenciosamente terminamos para no revelar
+      // la existencia de cuentas (OWASP Anti-Account Enumeration).
+    } catch (_) {
+      throw const AuthException(msgGenerico);
+    }
+  }
+
+  /// Cierra de forma segura la sesión del usuario.
+  Future<void> cerrarSesion() async {
+    try {
+      await _auth.signOut();
+    } catch (_) {
+      throw const AuthException(msgGenerico);
     }
   }
 

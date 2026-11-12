@@ -1,18 +1,31 @@
 /// Validaciones de los formularios de registro, inicio de sesión y hogar.
 /// Devuelven `null` si el valor es válido, o el mensaje de error a mostrar.
 class Validators {
-  static final RegExp _emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+  static final RegExp _emailRegex =
+      RegExp(r'^[a-zA-Z0-9.!#$%&*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$');
 
   static const int maxNombreHogar = 30;
+  static const int maxNombreUsuario = 60;
+  static const int maxTituloQuehacer = 120;
+  static const int maxNombreProducto = 120;
+
+  /// Sanitiza entradas de texto previniendo caracteres nulos o de control invisibles.
+  static String sanitizar(String? input) {
+    if (input == null) return '';
+    return input.replaceAll(RegExp(r'[\u0000-\u0008\u000B\u000C\u000E-\u001F]'), '').trim();
+  }
 
   static String? nombre(String? value) {
-    if ((value ?? '').trim().isEmpty) return 'Ingresa tu nombre';
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty) return 'Ingresa tu nombre';
+    if (texto.length > maxNombreUsuario) return 'Máximo $maxNombreUsuario caracteres';
     return null;
   }
 
   static String? correo(String? value) {
     final texto = (value ?? '').trim();
     if (texto.isEmpty || !_emailRegex.hasMatch(texto)) return 'Correo inválido';
+    if (texto.length > 120) return 'Correo demasiado largo';
     return null;
   }
 
@@ -50,6 +63,9 @@ class Validators {
     final texto = (value ?? '').trim();
     if (texto.isEmpty) return 'Ingresa el nombre del producto';
     if (texto.length < 2) return 'El nombre debe tener al menos 2 letras';
+    if (texto.length > maxNombreProducto) {
+      return 'Máximo $maxNombreProducto caracteres';
+    }
     return null;
   }
 
@@ -61,6 +77,9 @@ class Validators {
     if (numero == null || numero <= 0) {
       return 'La cantidad debe ser un número entero mayor a 0';
     }
+    if (numero > 99999) {
+      return 'La cantidad no puede superar 99,999';
+    }
     return null;
   }
 
@@ -68,6 +87,9 @@ class Validators {
   static String? tituloQuehacer(String? value) {
     final texto = (value ?? '').trim();
     if (texto.isEmpty) return 'Ingresa el título del quehacer';
+    if (texto.length > maxTituloQuehacer) {
+      return 'Máximo $maxTituloQuehacer caracteres';
+    }
     return null;
   }
 

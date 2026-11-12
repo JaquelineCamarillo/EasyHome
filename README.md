@@ -59,17 +59,31 @@ flutter pub get
 
 Esto descarga todos los paquetes que usa el proyecto (incluyendo `firebase_core`, `cloud_firestore`, `firebase_auth`, etc.), según lo que está declarado en `pubspec.yaml`.
 
-## Firebase ya está configurado 
+## Configuración de Firebase y Servicios en la Nube
 
-El archivo `lib/firebase_options.dart` ya viene incluido en el repositorio con las credenciales reales del proyecto `easyhome-6ef93`. **No es necesario correr `flutterfire configure`.**
+Por directrices de seguridad y buenas prácticas de protección de credenciales (evitando publicar secretos reales en el control de versiones), el repositorio proporciona plantillas de configuración con valores de referencia:
 
-Sin embargo, `android/app/google-services.json` **no está en el repositorio** (está en `.gitignore` a propósito, para no subir identificadores de proyecto al historial de GitHub). Antes de compilar, cada integrante debe colocarlo manualmente:
+1. **Configuración FlutterFire:**
+   - Si trabajas en un entorno de desarrollo nuevo o local, copia la plantilla de ejemplo:
+     ```bash
+     cp lib/firebase_options.example.dart lib/firebase_options.dart
+     ```
+   - O bien, enlaza el proyecto directamente con la CLI oficial de Firebase:
+     ```bash
+     flutterfire configure --project=easyhome-6ef93
+     ```
 
-1. Pide el archivo a Jaqueline (por WhatsApp/Drive), **o**
-2. Descárgalo tú mismo: Firebase Console → proyecto `easyhome-6ef93` → ⚙️ Configuración del proyecto → en la app Android registrada → botón "Descargar google-services.json".
-3. Coloca el archivo exactamente en: `android/app/google-services.json`
+2. **Configuración Nativa Android (`google-services.json`):**
+   - El archivo real se encuentra estrictamente excluido en `.gitignore` para no exponer identificadores del proyecto.
+   - Existe una plantilla de estructura en `android/app/google-services.json.example`.
+   - Para compilar y ejecutar localmente, descarga el archivo legítimo desde Firebase Console:
+     1. Entra a **Firebase Console** → Selecciona el proyecto del equipo.
+     2. Ve a ⚙️ **Configuración del proyecto** → Sección **Tus apps** → App Android (`com.example.easyhome`).
+     3. Descarga `google-services.json` y colócalo en:
+        `android/app/google-services.json`
 
-Sin este archivo, `flutter run` va a fallar al compilar para Android.
+> [!NOTE]
+> Para consultar la arquitectura de seguridad integral, modelo de amenazas, control de acceso por roles y matriz de cumplimiento OWASP, consulta la documentación detallada en [`bitacora/seguridad.md`](bitacora/seguridad.md).
 
 ## Correr la app
 

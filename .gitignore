@@ -51,6 +51,29 @@ android/app/build/
 # Widget Preview related
 .widget_preview/
 
-
+# Firebase and sensitive credentials
 android/app/google-services.json 
 ios/Runner/GoogleService-Info.plist
+
+# Environment and secrets
+.env
+.env.*
+*.env
+
+# Android signing keys and local properties
+*.jks
+*.keystore
+key.properties
+local.properties
+
+# Notificador local y secretos (notificaciones push, #21)
+notificador/serviceAccountKey.json
+notificador/.env
+notificador/node_modules/
+**/serviceAccount*.json
+service-account*.json
+
+# Archivos de plugins generados de Flutter
+macos/Flutter/GeneratedPluginRegistrant.swift
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugins.cmake

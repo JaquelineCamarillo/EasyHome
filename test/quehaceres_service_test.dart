@@ -1,4 +1,3 @@
-import 'package:easyhome/models/quehacer.dart';
 import 'package:easyhome/services/quehaceres_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
