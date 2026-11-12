@@ -6,6 +6,7 @@ import '../models/quehacer.dart';
 import '../routes.dart';
 import '../services/compras_service.dart';
 import '../services/hogar_service.dart';
+import '../services/notificaciones_service.dart';
 import '../services/quehaceres_service.dart';
 import '../services/usuario_service.dart';
 import '../utils/app_feedback.dart';
@@ -20,6 +21,7 @@ class DashboardScreen extends StatefulWidget {
     this.hogarService,
     this.quehaceresService,
     this.usuarioService,
+    this.notificacionesService,
     this.usuarioActualId,
     this.esAdministrador,
     this.vistaInicial = 0,
@@ -33,6 +35,7 @@ class DashboardScreen extends StatefulWidget {
   final HogarService? hogarService;
   final QuehaceresService? quehaceresService;
   final UsuarioService? usuarioService;
+  final NotificacionesService? notificacionesService;
   final String? usuarioActualId;
   final bool? esAdministrador;
   final int vistaInicial;
@@ -50,6 +53,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       widget.quehaceresService ?? QuehaceresService();
   late final UsuarioService _usuarios =
       widget.usuarioService ?? UsuarioService();
+  late final NotificacionesService _notificaciones =
+      widget.notificacionesService ?? NotificacionesService();
 
   late int _indiceSeccion = widget.vistaInicial;
   String _filtroQuehaceres = 'mis';
@@ -73,6 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _busquedaCtrl.dispose();
+    _notificaciones.dispose();
     super.dispose();
   }
 
@@ -97,6 +103,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       // Rotación semanal automática (#20): se dispara al resolver el hogar
       _ejecutarRotacionSemanal(hogarId);
+
+      // Inicializar notificaciones push FCM (#21)
+      final uid = widget.usuarioActualId ?? _usuarios.usuarioActualId;
+      if (uid != null && uid.isNotEmpty) {
+        _notificaciones.onMensajeEnPrimerPlano = (mensaje) {
+          if (!mounted) return;
+          final titulo = mensaje.notification?.title ?? mensaje.data['titulo'] ?? 'EasyHome';
+          final cuerpo = mensaje.notification?.body ?? mensaje.data['cuerpo'] ?? '';
+          final texto = cuerpo.isNotEmpty ? '$titulo: $cuerpo' : titulo;
+          AppFeedback.mostrarInfo(context, texto);
+        };
+        _notificaciones.onToqueNotificacion = (mensaje) {
+          if (!mounted) return;
+          final seccion = mensaje.data['seccion'];
+          if (seccion == 'quehaceres') {
+            setState(() => _indiceSeccion = 1);
+          } else if (seccion == 'compras') {
+            setState(() => _indiceSeccion = 0);
+          }
+        };
+        _notificaciones.inicializar(uid);
+      }
     } on HogarException catch (e) {
       if (mounted) {
         setState(() {

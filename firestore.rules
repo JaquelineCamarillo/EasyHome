@@ -73,6 +73,11 @@ service cloud.firestore {
             (request.resource.data.hogarId == resource.data.hogarId && request.resource.data.esAdministrador is bool)
             || (request.resource.data.hogarId == null && request.resource.data.esAdministrador == false)
           ))
+
+        // Caso 6: Guardar o borrar el propio token FCM (notificaciones push, #21)
+        || (request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken'])
+          && (!('fcmToken' in request.resource.data) || (request.resource.data.fcmToken is string && request.resource.data.fcmToken.size() <= 4096)))
       );
 
       // Eliminación prohibida para preservar integridad histórica

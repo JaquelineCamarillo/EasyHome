@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
@@ -14,9 +15,19 @@ import 'screens/perfil_hogar_screen.dart';
 import 'screens/registro_screen.dart';
 import 'screens/unirse_hogar_screen.dart';
 
+/// Handler de nivel superior para notificaciones en segundo plano (#21)
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  } catch (_) {}
+  debugPrint('Notificación push en segundo plano recibida: ${message.messageId}');
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   debugPrint(
       '✅ Firebase conectado: ${Firebase.apps.length} app(s), proyecto: ${Firebase.apps.first.options.projectId}');
 

@@ -17,6 +17,28 @@ Verifica que el usuario solicitante pertenezca al hogar indicado y cuente con el
 
 ---
 
+### Reglas para la colección `usuarios` (#21 - fcmToken)
+```firestore-rules
+match /usuarios/{uid} {
+  allow read: if estaAutenticado();
+  allow create: if estaAutenticado() && request.auth.uid == uid;
+  allow update: if estaAutenticado() && (
+    // El usuario puede actualizar su propio token FCM (#21)
+    (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmToken']))
+    // O su perfil básico (nombre, color de avatar, token)
+    || (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatarColor', 'fcmToken']))
+    // O vincularse / desvincularse de un hogar
+    || (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador']))
+  );
+  allow delete: if false;
+}
+```
+
+- Cada usuario puede guardar o eliminar su propio `fcmToken` sin exponer la posibilidad de alterar otros campos no autorizados de su documento.
+- El notificador local corre con credenciales de cuenta de servicio mediante el SDK Admin de Firebase, el cual omite las reglas de seguridad de cliente.
+
+---
+
 ### Reglas para la colección `quehaceres`
 ```firestore-rules
 match /quehaceres/{quehacerId} {
@@ -51,35 +73,11 @@ match /quehaceres/{quehacerId} {
 
 ---
 
-### Propuesta endurecida para `usuarios` (comentada en `firestore.rules`)
-Se incluye en `firestore.rules` como comentario la regla que restringe la autoasignación del rol de administrador y permite a los administradores gestionar los integrantes de su hogar:
-```firestore-rules
-// allow update: if estaAutenticado() && (
-//   (request.auth.uid == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre','avatarColor']))
-//   || (request.auth.uid == uid && resource.data.hogarId == null &&
-//       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId','esAdministrador']) &&
-//       (request.resource.data.esAdministrador == false ||
-//        getAfter(/databases/$(database)/documents/hogares/$(request.resource.data.hogarId)).data.creadoPor == request.auth.uid))
-//   || (request.auth.uid == uid && request.resource.data.hogarId == null && request.resource.data.esAdministrador == false &&
-//       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId','esAdministrador']))
-//   || (resource.data.hogarId != null && soyAdminDe(resource.data.hogarId) &&
-//       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId','esAdministrador']) &&
-//       (request.resource.data.hogarId == resource.data.hogarId || request.resource.data.hogarId == null))
-// );
-```
-> **Nota de seguridad:** Mantener comentada hasta validar en simulador/Rules Playground todos los flujos de creación y unión a hogares.
+## 2. Procedimiento de publicación manual en Firebase Console
 
----
-
-## 2. Instrucciones para aplicar en Firebase Console
-1. Entra a [Firebase Console](https://console.firebase.google.com/) con tu cuenta y selecciona el proyecto `easyhome-6ef93`.
-2. Ve a **Firestore Database** en el menú lateral izquierdo y abre la pestaña **Reglas** (*Rules*).
-3. Copia el contenido íntegro del archivo `firestore.rules` del repositorio.
-4. Antes de publicar, haz clic en **Simulador de reglas** (*Rules Playground*) y comprueba:
-   - Lectura autenticada con mismo `hogarId`: permitida.
-   - Creación de quehacer por usuario sin `esAdministrador: true`: bloqueada.
-   - Creación de quehacer por usuario admin: permitida.
-   - Modificación del campo `hecho` por el usuario asignado: permitida.
-   - Modificación del campo `hecho` por un usuario distinto al asignado (y no admin): bloqueada.
-   - Rotación semanal por integrante del hogar: modificación de `asignadoA` y `hecho` en tarea con `recurrente == true` permitida; cualquier otro campo bloqueado.
-5. Haz clic en **Publicar** (*Publish*).
+1. Iniciar sesión en [Firebase Console](https://console.firebase.google.com/).
+2. Seleccionar el proyecto `easyhome-6ef93`.
+3. Navegar en el menú lateral a **Firestore Database** -> pestaña **Reglas (Rules)**.
+4. Reemplazar el editor con el contenido completo de [firestore.rules](file:///C:/easyhome/firestore.rules).
+5. Hacer clic en **Publicar (Publish)**.
+6. Verificar en el **Rules Playground** que las simulaciones de lectura/escritura respondan de acuerdo a lo esperado.
