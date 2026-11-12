@@ -21,6 +21,9 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Proveer configuración de Firebase para CI
+        run: cp lib/firebase_options.example.dart lib/firebase_options.dart
+
       - name: Instalar dependencias de Flutter
         run: flutter pub get
 
