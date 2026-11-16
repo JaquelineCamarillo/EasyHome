@@ -123,18 +123,21 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
     final q = widget.quehacer;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.88,
-      ),
+    return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF7F5EE),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: SafeArea(
+        top: false,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF7F5EE),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
           // Barra de agarre
           Container(
             margin: const EdgeInsets.only(top: 12, bottom: 8),
@@ -338,35 +341,46 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                           // Nombre del autor y fecha/hora
                           Row(
                             children: [
-                              Text(
-                                c.autorNombre,
-                                key: Key('autor_comentario_${c.id}'),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  color: Color(0xFF1E2D27),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        c.autorNombre,
+                                        key: Key('autor_comentario_${c.id}'),
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: Color(0xFF1E2D27),
+                                        ),
+                                      ),
+                                    ),
+                                    if (esMio) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF234E3F)
+                                              .withValues(alpha: 0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: const Text(
+                                          'Tú',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF234E3F),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
-                              if (esMio) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF234E3F).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Text(
-                                    'Tú',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF234E3F),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                              const Spacer(),
+                              const SizedBox(width: 8),
                               Text(
                                 _formatearFechaHora(c.creadoEn),
                                 key: Key('fecha_comentario_${c.id}'),
@@ -503,6 +517,8 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
           ),
         ],
       ),
+    ),
+    ),
     );
   }
 }

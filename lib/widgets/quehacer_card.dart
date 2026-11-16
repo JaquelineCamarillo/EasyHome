@@ -52,6 +52,8 @@ class QuehacerCard extends StatelessWidget {
                   key: Key('checkbox_quehacer_${q.id}'),
                   value: q.hecho,
                   activeColor: const Color(0xFF234E3F),
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   onChanged: esResponsable ? onCheckboxChanged : null,
                 ),
               ),
