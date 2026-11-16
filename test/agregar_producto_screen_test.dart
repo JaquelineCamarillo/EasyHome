@@ -8,16 +8,19 @@ class FakeAgregarComprasService extends ComprasService {
   String? hogarIdRecibido;
   String? nombreRecibido;
   int? cantidadRecibida;
+  double? costoRecibido;
 
   @override
   Future<String> agregarProducto({
     required String hogarId,
     required String nombre,
     required int cantidad,
+    double? costo,
   }) async {
     hogarIdRecibido = hogarId;
     nombreRecibido = nombre;
     cantidadRecibida = cantidad;
+    costoRecibido = costo;
     return 'nuevo-id-123';
   }
 }

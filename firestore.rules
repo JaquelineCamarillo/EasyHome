@@ -21,6 +21,10 @@ service cloud.firestore {
       return val is string && val.size() >= minLen && val.size() <= maxLen;
     }
 
+    function esCostoValido(data) {
+      return !('costo' in data) || data.costo == null || (data.costo is number && data.costo >= 0);
+    }
+
     // --- Colección: usuarios ---
     match /usuarios/{uid} {
       // Lectura: Únicamente el propio usuario o integrantes que pertenezcan a su mismo hogar
@@ -119,7 +123,8 @@ service cloud.firestore {
                     && esTextoValido(request.resource.data.nombre, 1, 120)
                     && request.resource.data.cantidad is int
                     && request.resource.data.cantidad > 0
-                    && request.resource.data.comprado is bool;
+                    && request.resource.data.comprado is bool
+                    && esCostoValido(request.resource.data);
 
       allow update: if estaAutenticado()
                     && resource.data.hogarId == miHogarId()
@@ -127,7 +132,8 @@ service cloud.firestore {
                     && esTextoValido(request.resource.data.nombre, 1, 120)
                     && request.resource.data.cantidad is int
                     && request.resource.data.cantidad > 0
-                    && request.resource.data.comprado is bool;
+                    && request.resource.data.comprado is bool
+                    && esCostoValido(request.resource.data);
 
       allow delete: if estaAutenticado() && resource.data.hogarId == miHogarId();
     }
@@ -165,6 +171,23 @@ service cloud.firestore {
 
       // Solo el admin del hogar puede eliminar quehaceres
       allow delete: if estaAutenticado() && soyAdminDe(resource.data.hogarId);
+
+      // Subcolección: comentarios (#Requerimiento 1 Retro)
+      match /comentarios/{comentarioId} {
+        // Solo integrantes del mismo hogar pueden leer los comentarios
+        allow read: if estaAutenticado()
+                    && get(/databases/$(database)/documents/quehaceres/$(quehacerId)).data.hogarId == miHogarId();
+
+        // Cualquier integrante del mismo hogar puede escribir un comentario (1 a 300 caracteres)
+        allow create: if estaAutenticado()
+                      && get(/databases/$(database)/documents/quehaceres/$(quehacerId)).data.hogarId == miHogarId()
+                      && request.resource.data.autorId == request.auth.uid
+                      && esTextoValido(request.resource.data.texto, 1, 300)
+                      && esTextoValido(request.resource.data.autorNombre, 1, 60);
+
+        // Inmutables: no se pueden editar ni borrar comentarios para preservar el historial
+        allow update, delete: if false;
+      }
     }
 
     // --- Colección en desuso o cerrada: codigosInvitacion ---

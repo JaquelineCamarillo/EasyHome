@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/integrante.dart';
 import '../models/producto.dart';
@@ -13,6 +14,7 @@ import '../utils/app_feedback.dart';
 import '../utils/validators.dart';
 import '../widgets/producto_card.dart';
 import '../widgets/quehacer_card.dart';
+import 'detalle_quehacer_modal.dart';
 
 /// Pantalla principal — Dashboard de compras y quehaceres en tiempo real.
 class DashboardScreen extends StatefulWidget {
@@ -341,6 +343,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final nombreCtrl = TextEditingController(text: producto.nombre);
     final cantidadCtrl =
         TextEditingController(text: producto.cantidad.toString());
+    final costoCtrl = TextEditingController(
+      text: producto.costo != null ? producto.costo!.toStringAsFixed(2) : '',
+    );
     bool guardando = false;
 
     await showModalBottomSheet<void>(
@@ -448,6 +453,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        key: const Key('campo_editar_costo_producto'),
+                        controller: costoCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'^\d*\.?\d{0,2}'),
+                          ),
+                        ],
+                        decoration: const InputDecoration(
+                          labelText: 'Costo estimado (opcional)',
+                          prefixIcon: Icon(Icons.attach_money_rounded),
+                        ),
+                        validator: Validators.costoProducto,
+                      ),
                       const SizedBox(height: 24),
                       FilledButton(
                         key: const Key('boton_guardar_edicion'),
@@ -461,6 +484,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 final nuevaCantidad =
                                     int.tryParse(cantidadCtrl.text.trim()) ?? 1;
                                 final nuevoNombre = nombreCtrl.text.trim();
+                                double? nuevoCosto;
+                                final costoTxt = costoCtrl.text.trim();
+                                if (costoTxt.isNotEmpty) {
+                                  nuevoCosto = double.tryParse(costoTxt);
+                                }
 
                                 setModalState(() => guardando = true);
                                 try {
@@ -468,6 +496,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     productoId: producto.id,
                                     nombre: nuevoNombre,
                                     cantidad: nuevaCantidad,
+                                    costo: nuevoCosto,
                                   );
                                   if (!ctx.mounted) return;
                                   Navigator.of(ctx).pop();
@@ -734,9 +763,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   : Column(
                       children: [
                         if (todos.isNotEmpty && query.isEmpty)
-                          ProgresoComprasBanner(
-                            comprados: todos.where((p) => p.comprado).length,
-                            total: todos.length,
+                          Builder(
+                            builder: (_) {
+                              final compradosConCosto = todos
+                                  .where((p) => p.comprado && p.costo != null);
+                              final totalCosto = compradosConCosto.isNotEmpty
+                                  ? compradosConCosto.fold<double>(
+                                      0.0,
+                                      (acc, p) => acc + (p.costo! * p.cantidad),
+                                    )
+                                  : null;
+                              return ProgresoComprasBanner(
+                                comprados:
+                                    todos.where((p) => p.comprado).length,
+                                total: todos.length,
+                                totalCostoComprados: totalCosto,
+                              );
+                            },
                           ),
                         Expanded(
                           child: TabBarView(
@@ -839,6 +882,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       AppFeedback.mostrarError(
           context, QuehaceresService.msgErrorActualizar);
     }
+  }
+
+  void _mostrarDetalleQuehacer(
+    Quehacer quehacer,
+    String responsableNombre,
+    String? autorNombre,
+  ) {
+    DetalleQuehacerModal.mostrar(
+      context: context,
+      quehacer: quehacer,
+      responsableNombre: responsableNombre,
+      quehaceresService: _quehaceres,
+      usuarioActualNombre: autorNombre,
+    );
   }
 
   Future<void> _mostrarMenuOpcionesQuehacer(
@@ -1609,6 +1666,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   onOptionsPressed: () =>
                                       _mostrarMenuOpcionesQuehacer(
                                           q, integrantes, esAdmin),
+                                  onCommentsPressed: () =>
+                                      _mostrarDetalleQuehacer(
+                                          q,
+                                          responsable,
+                                          integrantesMap[uidActual]),
                                 );
                               },
                             ),

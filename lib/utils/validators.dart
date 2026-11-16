@@ -83,6 +83,25 @@ class Validators {
     return null;
   }
 
+  /// Costo del producto (#Requerimiento 2 Retro):
+  /// Opcional, solo números mayores o iguales a 0 y máximo 2 decimales.
+  static String? costoProducto(String? value) {
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty) return null; // Campo opcional
+
+    final numero = double.tryParse(texto);
+    if (numero == null || numero < 0) {
+      return 'Ingresa un costo válido mayor o igual a 0';
+    }
+
+    final regexDosDecimales = RegExp(r'^\d+(\.\d{1,2})?$');
+    if (!regexDosDecimales.hasMatch(texto)) {
+      return 'Máximo 2 decimales (ej. 25.50)';
+    }
+
+    return null;
+  }
+
   /// Título del quehacer: obligatorio y no solo espacios (#17).
   static String? tituloQuehacer(String? value) {
     final texto = (value ?? '').trim();

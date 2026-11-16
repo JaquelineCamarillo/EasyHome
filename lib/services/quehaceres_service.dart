@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/comentario.dart';
 import '../models/quehacer.dart';
 import '../utils/rotacion_semanal.dart';
 
@@ -49,6 +50,9 @@ class QuehaceresService {
   static const msgNoEsResponsable = 'Solo el responsable puede marcar este quehacer';
   static const msgSinPermiso = 'No tienes permiso para esta acción';
   static const msgResponsableInvalido = 'El responsable seleccionado no pertenece al hogar';
+  static const msgComentarioVacio = 'El comentario no puede estar vacío';
+  static const msgComentarioLargo = 'El comentario no puede exceder 300 caracteres';
+  static const msgErrorComentario = 'No se pudo publicar el comentario';
 
   /// Escucha en tiempo real los quehaceres asociados a un [hogarId].
   ///
@@ -201,8 +205,6 @@ class QuehaceresService {
       }
 
       await _db.collection('quehaceres').doc(quehacerId).update(datos);
-    } on QuehaceresException {
-      rethrow;
     } on FirebaseException catch (e) {
       debugPrint('Firestore error al actualizar quehacer: ${e.code}');
       throw const QuehaceresException(msgErrorActualizar);
@@ -224,6 +226,7 @@ class QuehaceresService {
     }
 
     try {
+      // Validar que el nuevo responsable pertenezca al hogar
       final usuarioDoc = await _db.collection('usuarios').doc(nuevoAsignadoA).get();
       if (!usuarioDoc.exists || usuarioDoc.data()?['hogarId'] != hogarId) {
         throw const QuehaceresException(msgResponsableInvalido);
@@ -364,6 +367,67 @@ class QuehaceresService {
     } catch (e) {
       debugPrint('Error durante rotación semanal de quehaceres: $e');
       return 0;
+    }
+  }
+
+  /// Escucha en tiempo real los comentarios de un quehacer, ordenados
+  /// cronológicamente (del más antiguo al más reciente).
+  Stream<List<Comentario>> observarComentarios(String quehacerId) {
+    return _db
+        .collection('quehaceres')
+        .doc(quehacerId)
+        .collection('comentarios')
+        .orderBy('creadoEn', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Comentario.fromMap(doc.id, quehacerId, doc.data()))
+          .toList();
+    });
+  }
+
+  /// Agrega un nuevo comentario al quehacer especificado.
+  /// Valida que el texto tenga entre 1 y 300 caracteres.
+  Future<String> agregarComentario({
+    required String quehacerId,
+    required String texto,
+    String? autorNombre,
+  }) async {
+    final uid = usuarioActualId;
+    if (uid == null) throw const QuehaceresException(msgSesionExpirada);
+
+    final textoLimpio = texto.trim();
+    if (textoLimpio.isEmpty) {
+      throw const QuehaceresException(msgComentarioVacio);
+    }
+    if (textoLimpio.length > 300) {
+      throw const QuehaceresException(msgComentarioLargo);
+    }
+
+    try {
+      String nombre = autorNombre ?? _auth.currentUser?.displayName ?? '';
+      if (nombre.isEmpty) {
+        final usuarioDoc = await _db.collection('usuarios').doc(uid).get();
+        nombre = (usuarioDoc.data()?['nombre'] as String?) ?? 'Integrante';
+      }
+
+      final docRef = await _db
+          .collection('quehaceres')
+          .doc(quehacerId)
+          .collection('comentarios')
+          .add({
+        'autorId': uid,
+        'autorNombre': nombre,
+        'texto': textoLimpio,
+        'creadoEn': FieldValue.serverTimestamp(),
+      });
+
+      return docRef.id;
+    } on FirebaseException catch (e) {
+      debugPrint('Firestore error al agregar comentario: ${e.code}');
+      throw const QuehaceresException(msgErrorComentario);
+    } catch (_) {
+      throw const QuehaceresException(msgSinConexion);
     }
   }
 }

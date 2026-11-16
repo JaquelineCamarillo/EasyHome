@@ -71,38 +71,46 @@ class ComprasService {
     }
   }
 
-  /// Actualiza el nombre y cantidad de un producto existente (#12).
+  /// Actualiza el nombre, cantidad y costo opcional de un producto (#12 y #Requerimiento 2 Retro).
   Future<void> editarProducto({
     required String productoId,
     required String nombre,
     required int cantidad,
+    double? costo,
   }) async {
     try {
-      await _db.collection('productos').doc(productoId).update({
+      final Map<String, dynamic> datos = {
         'nombre': nombre.trim(),
         'cantidad': cantidad,
-      });
+        'costo': costo,
+      };
+      await _db.collection('productos').doc(productoId).update(datos);
     } on FirebaseException catch (e) {
       debugPrint('Firestore error al editar producto: ${e.code}');
       throw const ComprasException(msgErrorActualizar);
     }
   }
 
-  /// Agrega un nuevo producto a la lista de compras del hogar (#10).
+  /// Agrega un nuevo producto a la lista de compras del hogar (#10 y #Requerimiento 2 Retro).
   Future<String> agregarProducto({
     required String hogarId,
     required String nombre,
     required int cantidad,
+    double? costo,
   }) async {
     try {
-      final docRef = await _db.collection('productos').add({
+      final Map<String, dynamic> datos = {
         'hogarId': hogarId,
         'nombre': nombre.trim(),
         'cantidad': cantidad,
         'comprado': false,
         'agregadoPor': _auth.currentUser?.uid,
         'fechaCreacion': FieldValue.serverTimestamp(),
-      });
+      };
+      if (costo != null) {
+        datos['costo'] = costo;
+      }
+      final docRef = await _db.collection('productos').add(datos);
       return docRef.id;
     } on FirebaseException catch (e) {
       debugPrint('Firestore error al agregar producto: ${e.code}');
