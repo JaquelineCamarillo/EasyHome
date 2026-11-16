@@ -54,6 +54,10 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
         return;
       }
       _hogarIdResuelto = hogarId;
+      // Sincronizar el correo del usuario actual en Firestore si aún no lo tiene
+      try {
+        _usuarios.sincronizarCorreoActual();
+      } catch (_) {}
       // Los streams se crean una sola vez (no dentro de build).
       setState(() {
         _hogarStream = _hogares.observarHogar(hogarId);
@@ -389,12 +393,96 @@ class _IntegranteTile extends StatelessWidget {
     }
   }
 
+  Future<void> _mostrarDialogoEditarCorreo(BuildContext context) async {
+    final ctrl = TextEditingController(text: integrante.correo ?? '');
+    final formKey = GlobalKey<FormState>();
+
+    final guardado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.email_outlined, color: Color(0xFF234E3F)),
+            SizedBox(width: 8),
+            Text(
+              'Registrar correo',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Ingresa el correo electrónico para ${integrante.nombre}:',
+                style: const TextStyle(fontSize: 13, color: Colors.black87),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                key: const Key('campo_editar_correo_integrante'),
+                controller: ctrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Correo electrónico',
+                  hintText: 'ejemplo@correo.com',
+                  prefixIcon: Icon(Icons.alternate_email_rounded),
+                ),
+                validator: (val) {
+                  final v = (val ?? '').trim();
+                  if (v.isEmpty) return 'Ingresa un correo';
+                  if (!v.contains('@') || !v.contains('.')) return 'Correo inválido';
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            key: const Key('boton_guardar_correo_integrante'),
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              try {
+                await usuarioService?.actualizarCorreoIntegrante(
+                  integranteUid: integrante.uid,
+                  nuevoCorreo: ctrl.text.trim(),
+                );
+                if (!ctx.mounted) return;
+                Navigator.of(ctx).pop(true);
+              } catch (_) {
+                if (!ctx.mounted) return;
+                AppFeedback.mostrarError(ctx, 'No se pudo guardar el correo');
+              }
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (guardado == true && context.mounted) {
+      AppFeedback.mostrarExito(context, 'Correo registrado');
+    }
+  }
+
   void _mostrarDetallePerfil(
     BuildContext context,
     ThemeData tema,
     Color avatarColor,
     String inicial,
   ) {
+    final correoEfectivo = esYo
+        ? (integrante.correo ?? usuarioService?.usuarioActual?.email)
+        : integrante.correo;
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -548,9 +636,9 @@ class _IntegranteTile extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           soyAdmin
-                              ? (integrante.correo != null &&
-                                      integrante.correo!.isNotEmpty
-                                  ? integrante.correo!
+                              ? (correoEfectivo != null &&
+                                      correoEfectivo.isNotEmpty
+                                  ? correoEfectivo
                                   : 'Sin correo registrado')
                               : 'Visible solo para administradores',
                           key: Key('detalle_correo_${integrante.uid}'),
@@ -566,17 +654,30 @@ class _IntegranteTile extends StatelessWidget {
                     ),
                   ),
                   if (soyAdmin &&
-                      integrante.correo != null &&
-                      integrante.correo!.isNotEmpty)
+                      correoEfectivo != null &&
+                      correoEfectivo.isNotEmpty)
                     IconButton(
                       icon: const Icon(Icons.copy_rounded,
                           size: 18, color: Colors.black45),
                       tooltip: 'Copiar correo',
                       onPressed: () async {
                         await Clipboard.setData(
-                            ClipboardData(text: integrante.correo!));
+                            ClipboardData(text: correoEfectivo));
                         if (!context.mounted) return;
                         AppFeedback.mostrarExito(context, 'Correo copiado');
+                      },
+                    ),
+                  if (soyAdmin)
+                    IconButton(
+                      key: Key('boton_editar_correo_${integrante.uid}'),
+                      icon: const Icon(Icons.edit_outlined,
+                          size: 18, color: Color(0xFF234E3F)),
+                      tooltip: correoEfectivo != null && correoEfectivo.isNotEmpty
+                          ? 'Editar correo'
+                          : 'Registrar correo',
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        _mostrarDialogoEditarCorreo(context);
                       },
                     ),
                 ],
@@ -636,6 +737,9 @@ class _IntegranteTile extends StatelessWidget {
     final inicial = integrante.nombre.isNotEmpty
         ? integrante.nombre.characters.first.toUpperCase()
         : 'U';
+    final correoEfectivo = esYo
+        ? (integrante.correo ?? usuarioService?.usuarioActual?.email)
+        : integrante.correo;
 
     Color avatarColor = tema.colorScheme.primary;
     if (integrante.avatarColor != null) {
@@ -715,11 +819,11 @@ class _IntegranteTile extends StatelessWidget {
                         ],
                       ),
                       if (soyAdmin &&
-                          integrante.correo != null &&
-                          integrante.correo!.isNotEmpty) ...[
+                          correoEfectivo != null &&
+                          correoEfectivo.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
-                          integrante.correo!,
+                          correoEfectivo,
                           key: Key('correo_integrante_${integrante.uid}'),
                           style: const TextStyle(
                             fontSize: 12,

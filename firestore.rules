@@ -75,10 +75,11 @@ service cloud.firestore {
           && request.resource.data.hogarId == null
           && request.resource.data.esAdministrador == false)
 
-        // Caso 5: Admin del hogar promueve/degrada o expulsa a un integrante de su hogar
+        // Caso 5: Admin del hogar promueve/degrada, actualiza correo o expulsa a un integrante de su hogar
         || (resource.data.hogarId != null
           && soyAdminDe(resource.data.hogarId)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador', 'correo'])
+          && (!('correo' in request.resource.data) || request.resource.data.correo is string)
           && (
             (request.resource.data.hogarId == resource.data.hogarId && request.resource.data.esAdministrador is bool)
             || (request.resource.data.hogarId == null && request.resource.data.esAdministrador == false)
