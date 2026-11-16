@@ -147,7 +147,10 @@ class UsuarioService {
   }
 
   /// Expulsa o remueve a un integrante del hogar actual.
-  Future<void> removerIntegrante({required String integranteUid}) async {
+  Future<void> removerIntegrante({
+    required String integranteUid,
+    String? hogarId,
+  }) async {
     try {
       await _db.collection('usuarios').doc(integranteUid).update({
         'hogarId': null,

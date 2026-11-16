@@ -232,6 +232,7 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
             Expanded(
               child: _ListaIntegrantes(
                 stream: integrantesStream,
+                hogarId: hogar.id,
                 usuarioActualId: _usuarios.usuarioActualId,
                 usuarioService: _usuarios,
               ),
@@ -251,11 +252,13 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
 class _ListaIntegrantes extends StatelessWidget {
   const _ListaIntegrantes({
     required this.stream,
+    this.hogarId,
     this.usuarioActualId,
     this.usuarioService,
   });
 
   final Stream<List<Integrante>> stream;
+  final String? hogarId;
   final String? usuarioActualId;
   final UsuarioService? usuarioService;
 
@@ -295,6 +298,7 @@ class _ListaIntegrantes extends StatelessWidget {
             final integrante = integrantes[i - 1];
             return _IntegranteTile(
               integrante: integrante,
+              hogarId: hogarId,
               esYo: integrante.uid == usuarioActualId,
               puedeAdministrar: soyAdmin && integrante.uid != usuarioActualId,
               usuarioService: usuarioService,
@@ -309,12 +313,14 @@ class _ListaIntegrantes extends StatelessWidget {
 class _IntegranteTile extends StatelessWidget {
   const _IntegranteTile({
     required this.integrante,
+    this.hogarId,
     this.esYo = false,
     this.puedeAdministrar = false,
     this.usuarioService,
   });
 
   final Integrante integrante;
+  final String? hogarId;
   final bool esYo;
   final bool puedeAdministrar;
   final UsuarioService? usuarioService;
@@ -373,7 +379,10 @@ class _IntegranteTile extends StatelessWidget {
 
     if (confirmar == true && context.mounted) {
       try {
-        await usuarioService?.removerIntegrante(integranteUid: integrante.uid);
+        await usuarioService?.removerIntegrante(
+          integranteUid: integrante.uid,
+          hogarId: hogarId,
+        );
         if (!context.mounted) return;
         AppFeedback.mostrarInfo(
           context,
@@ -507,11 +516,13 @@ class _IntegranteTile extends StatelessWidget {
                         color: Colors.black87,
                       ),
                       const SizedBox(width: 10),
-                      Text(
-                        integrante.esAdministrador
-                            ? 'Quitar rol de admin'
-                            : 'Hacer administrador',
-                        style: const TextStyle(fontSize: 13),
+                      Expanded(
+                        child: Text(
+                          integrante.esAdministrador
+                              ? 'Quitar rol de admin'
+                              : 'Hacer administrador',
+                          style: const TextStyle(fontSize: 13),
+                        ),
                       ),
                     ],
                   ),
@@ -522,9 +533,11 @@ class _IntegranteTile extends StatelessWidget {
                     children: [
                       Icon(Icons.person_remove_outlined, size: 20, color: Color(0xFFC24134)),
                       SizedBox(width: 10),
-                      Text(
-                        'Remover del hogar',
-                        style: TextStyle(fontSize: 13, color: Color(0xFFC24134)),
+                      Expanded(
+                        child: Text(
+                          'Remover del hogar',
+                          style: TextStyle(fontSize: 13, color: Color(0xFFC24134)),
+                        ),
                       ),
                     ],
                   ),

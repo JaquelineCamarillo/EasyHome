@@ -18,12 +18,22 @@ service cloud.firestore {
     match /usuarios/{uid} {
       allow read: if estaAutenticado();
       allow create: if estaAutenticado() && request.auth.uid == uid;
-      allow update: if estaAutenticado() && request.auth.uid == uid;
+      allow update: if estaAutenticado() && (
+        // 1. El propio usuario puede editar su perfil o unirse/salir de un hogar
+        request.auth.uid == uid
+        // 2. O un administrador del mismo hogar puede cambiar el rol o expulsar integrantes
+        || (
+          resource.data.hogarId != null
+          && soyAdminDe(resource.data.hogarId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['esAdministrador', 'hogarId'])
+          && (request.resource.data.hogarId == resource.data.hogarId || request.resource.data.hogarId == null)
+        )
+      );
       allow delete: if false;
     }
 
     match /hogares/{hogarId} {
-      allow read: if estaAutenticado() && miHogarId() == hogarId;
+      allow read: if estaAutenticado();
       allow create: if estaAutenticado();
       allow update: if estaAutenticado() && miHogarId() == hogarId;
       allow delete: if false;

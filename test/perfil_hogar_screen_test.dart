@@ -4,6 +4,7 @@ import 'package:easyhome/models/hogar.dart';
 import 'package:easyhome/models/integrante.dart';
 import 'package:easyhome/screens/perfil_hogar_screen.dart';
 import 'package:easyhome/services/hogar_service.dart';
+import 'package:easyhome/services/usuario_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,6 +30,33 @@ class FakePerfilService extends HogarService {
       integrantesCtrl.stream;
 }
 
+class FakePerfilUsuarioService extends UsuarioService {
+  FakePerfilUsuarioService({super.usuarioActualId});
+
+  String? integranteRemovido;
+  String? hogarIdRemovido;
+  String? integranteRolCambiado;
+  bool? nuevoEsAdmin;
+
+  @override
+  Future<void> removerIntegrante({
+    required String integranteUid,
+    String? hogarId,
+  }) async {
+    integranteRemovido = integranteUid;
+    hogarIdRemovido = hogarId;
+  }
+
+  @override
+  Future<void> cambiarRolIntegrante({
+    required String integranteUid,
+    required bool esAdmin,
+  }) async {
+    integranteRolCambiado = integranteUid;
+    nuevoEsAdmin = esAdmin;
+  }
+}
+
 const _hogar = Hogar(id: 'h1', nombre: 'Depa de Ana', codigoInvitacion: 'A3F9K2');
 const _ana = Integrante(uid: '1', nombre: 'Ana', esAdministrador: true);
 const _luis = Integrante(uid: '2', nombre: 'Luis', esAdministrador: false);
@@ -38,13 +66,18 @@ Future<FakePerfilService> _montar(
   WidgetTester tester, {
   String? hogarId = 'h1',
   String? hogarIdActual = 'h1',
+  UsuarioService? usuarioService,
 }) async {
   final fake = FakePerfilService()..hogarIdActual = hogarIdActual;
   addTearDown(fake.hogarCtrl.close);
   addTearDown(fake.integrantesCtrl.close);
 
   await tester.pumpWidget(MaterialApp(
-    home: PerfilHogarScreen(hogarId: hogarId, hogarService: fake),
+    home: PerfilHogarScreen(
+      hogarId: hogarId,
+      hogarService: fake,
+      usuarioService: usuarioService,
+    ),
   ));
   return fake;
 }
@@ -159,5 +192,43 @@ void main() {
     await tester.pump();
 
     expect(find.text('Todavía no perteneces a ningún hogar'), findsOneWidget);
+  });
+
+  testWidgets('admin puede cambiar el rol de un integrante', (tester) async {
+    final fakeUsuario = FakePerfilUsuarioService(usuarioActualId: '1');
+    final fake = await _montar(tester, usuarioService: fakeUsuario);
+    await _emitir(tester, fake, integrantes: [_ana, _luis]);
+
+    final menuBtn = find.byKey(const Key('menu_integrante_2'));
+    expect(menuBtn, findsOneWidget);
+    await tester.tap(menuBtn);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Hacer administrador'));
+    await tester.pumpAndSettle();
+
+    expect(fakeUsuario.integranteRolCambiado, '2');
+    expect(fakeUsuario.nuevoEsAdmin, isTrue);
+  });
+
+  testWidgets('admin puede expulsar a un integrante enviando el hogarId', (tester) async {
+    final fakeUsuario = FakePerfilUsuarioService(usuarioActualId: '1');
+    final fake = await _montar(tester, hogarId: 'h1', usuarioService: fakeUsuario);
+    await _emitir(tester, fake, integrantes: [_ana, _luis]);
+
+    final menuBtn = find.byKey(const Key('menu_integrante_2'));
+    expect(menuBtn, findsOneWidget);
+    await tester.tap(menuBtn);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Remover del hogar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('¿Estás seguro de que deseas expulsar a Luis de este hogar?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Expulsar'));
+    await tester.pumpAndSettle();
+
+    expect(fakeUsuario.integranteRemovido, '2');
+    expect(fakeUsuario.hogarIdRemovido, 'h1');
   });
 }
