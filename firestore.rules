@@ -38,19 +38,21 @@ service cloud.firestore {
                     && request.auth.uid == uid
                     && esTextoValido(request.resource.data.nombre, 1, 60)
                     && request.resource.data.esAdministrador == false
-                    && request.resource.data.hogarId == null;
+                    && request.resource.data.hogarId == null
+                    && (!('correo' in request.resource.data) || request.resource.data.correo is string);
 
       // Actualización:
-      // 1. El propio usuario actualiza solo nombre o avatarColor
+      // 1. El propio usuario actualiza solo nombre, avatarColor o correo propio
       // 2. El propio usuario se une a un hogar (esAdministrador SIEMPRE false)
       // 3. El propio usuario crea un hogar y se vuelve admin (se valida que él sea el creador del hogar)
       // 4. El propio usuario se sale del hogar (hogarId null, esAdministrador false)
       // 5. El administrador del hogar cambia el rol de un integrante o lo expulsa
       allow update: if estaAutenticado() && (
-        // Caso 1: Actualizar nombre o avatar
+        // Caso 1: Actualizar nombre, avatar o correo propio
         (request.auth.uid == uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatarColor'])
-          && (!('nombre' in request.resource.data) || esTextoValido(request.resource.data.nombre, 1, 60)))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatarColor', 'correo'])
+          && (!('nombre' in request.resource.data) || esTextoValido(request.resource.data.nombre, 1, 60))
+          && (!('correo' in request.resource.data) || request.resource.data.correo is string))
 
         // Caso 2: Unirse a un hogar (NO puede ponerse admin y debe existir el hogar)
         || (request.auth.uid == uid
