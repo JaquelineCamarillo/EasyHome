@@ -4,9 +4,14 @@ import 'package:easyhome/models/hogar.dart';
 import 'package:easyhome/models/integrante.dart';
 import 'package:easyhome/screens/perfil_hogar_screen.dart';
 import 'package:easyhome/services/hogar_service.dart';
+import 'package:easyhome/services/usuario_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class FakePerfilUsuarioService extends UsuarioService {
+  FakePerfilUsuarioService({super.usuarioActualId});
+}
 
 /// Servicio falso: los streams los controla la prueba.
 class FakePerfilService extends HogarService {
@@ -38,13 +43,18 @@ Future<FakePerfilService> _montar(
   WidgetTester tester, {
   String? hogarId = 'h1',
   String? hogarIdActual = 'h1',
+  UsuarioService? usuarioService,
 }) async {
   final fake = FakePerfilService()..hogarIdActual = hogarIdActual;
   addTearDown(fake.hogarCtrl.close);
   addTearDown(fake.integrantesCtrl.close);
 
   await tester.pumpWidget(MaterialApp(
-    home: PerfilHogarScreen(hogarId: hogarId, hogarService: fake),
+    home: PerfilHogarScreen(
+      hogarId: hogarId,
+      hogarService: fake,
+      usuarioService: usuarioService,
+    ),
   ));
   return fake;
 }
@@ -159,5 +169,55 @@ void main() {
     await tester.pump();
 
     expect(find.text('Todavía no perteneces a ningún hogar'), findsOneWidget);
+  });
+
+  testWidgets('admin puede ver el correo del integrante en la lista y en el modal', (tester) async {
+    const carlos = Integrante(
+      uid: 'c1',
+      nombre: 'Carlos',
+      esAdministrador: false,
+      correo: 'carlos@easyhome.test',
+    );
+    final userSvc = FakePerfilUsuarioService(usuarioActualId: '1'); // Ana es admin
+
+    final fake = await _montar(tester, usuarioService: userSvc);
+    await _emitir(tester, fake, integrantes: [_ana, carlos]);
+
+    // Como admin, ve el correo de Carlos directamente en la tarjeta
+    expect(find.byKey(const Key('correo_integrante_c1')), findsOneWidget);
+    expect(find.text('carlos@easyhome.test'), findsOneWidget);
+
+    // Al tocar la tarjeta, se abre el modal de perfil detallado
+    await tester.tap(find.byKey(const Key('tile_integrante_c1')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('detalle_nombre_c1')), findsOneWidget);
+    expect(find.byKey(const Key('detalle_correo_c1')), findsOneWidget);
+    expect(find.text('carlos@easyhome.test'), findsWidgets);
+    expect(find.text('Integrante'), findsWidgets);
+  });
+
+  testWidgets('no-admin no ve el correo de otros integrantes (protección de privacidad)', (tester) async {
+    const carlos = Integrante(
+      uid: 'c1',
+      nombre: 'Carlos',
+      esAdministrador: false,
+      correo: 'carlos@easyhome.test',
+    );
+    // Usuario actual es Luis ('2'), que no es admin
+    final userSvc = FakePerfilUsuarioService(usuarioActualId: '2');
+
+    final fake = await _montar(tester, usuarioService: userSvc);
+    await _emitir(tester, fake, integrantes: [_ana, _luis, carlos]);
+
+    // No ve el correo en la tarjeta
+    expect(find.byKey(const Key('correo_integrante_c1')), findsNothing);
+
+    // Al abrir el modal, el correo está oculto
+    await tester.tap(find.byKey(const Key('tile_integrante_c1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Visible solo para administradores'), findsOneWidget);
+    expect(find.text('carlos@easyhome.test'), findsNothing);
   });
 }

@@ -13,6 +13,7 @@ class QuehacerCard extends StatelessWidget {
     required this.onLongPress,
     this.onCheckboxChanged,
     this.onOptionsPressed,
+    this.onCommentsPressed,
   });
 
   final Quehacer quehacer;
@@ -23,6 +24,7 @@ class QuehacerCard extends StatelessWidget {
   final VoidCallback onLongPress;
   final ValueChanged<bool?>? onCheckboxChanged;
   final VoidCallback? onOptionsPressed;
+  final VoidCallback? onCommentsPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +52,8 @@ class QuehacerCard extends StatelessWidget {
                   key: Key('checkbox_quehacer_${q.id}'),
                   value: q.hecho,
                   activeColor: const Color(0xFF234E3F),
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   onChanged: esResponsable ? onCheckboxChanged : null,
                 ),
               ),
@@ -190,6 +194,34 @@ class QuehacerCard extends StatelessWidget {
                               ),
                             ],
                           ),
+                        InkWell(
+                          key: Key('boton_comentarios_${q.id}'),
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: onCommentsPressed ?? onTap,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 2),
+                            child: const Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 4,
+                              children: [
+                                Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  size: 14,
+                                  color: Color(0xFF234E3F),
+                                ),
+                                Text(
+                                  'Comentarios',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF234E3F),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ],

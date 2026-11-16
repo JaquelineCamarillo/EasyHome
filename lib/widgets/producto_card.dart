@@ -7,10 +7,12 @@ class ProgresoComprasBanner extends StatelessWidget {
     super.key,
     required this.comprados,
     required this.total,
+    this.totalCostoComprados,
   });
 
   final int comprados;
   final int total;
+  final double? totalCostoComprados;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +83,28 @@ class ProgresoComprasBanner extends StatelessWidget {
               ),
             ),
           ),
+          if (totalCostoComprados != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(
+                  Icons.receipt_long_rounded,
+                  size: 16,
+                  color: Color(0xFF1E4D3E),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Total de lo comprado: \$${totalCostoComprados!.toStringAsFixed(2)}',
+                  key: const Key('total_costo_comprado'),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E4D3E),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -245,29 +269,56 @@ class ProductoCard extends StatelessWidget {
                             : TextDecoration.none,
                       ),
                     ),
-                    if (producto.cantidad > 0) ...[
+                    if (producto.cantidad > 0 || producto.costo != null) ...[
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          Icon(
-                            Icons.format_list_numbered_rounded,
-                            size: 14,
-                            color: esComprado
-                                ? Colors.black38
-                                : tema.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Cantidad: ${producto.cantidad}',
-                            key: Key('cantidad_${producto.id}'),
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                          if (producto.cantidad > 0) ...[
+                            Icon(
+                              Icons.format_list_numbered_rounded,
+                              size: 14,
                               color: esComprado
                                   ? Colors.black38
-                                  : Colors.black54,
+                                  : tema.colorScheme.primary,
                             ),
-                          ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Cantidad: ${producto.cantidad}',
+                              key: Key('cantidad_${producto.id}'),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: esComprado
+                                    ? Colors.black38
+                                    : Colors.black54,
+                              ),
+                            ),
+                          ],
+                          if (producto.costo != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              key: Key('badge_costo_${producto.id}'),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: esComprado
+                                    ? Colors.black12
+                                    : const Color(0xFFE8F1EC),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '\$${producto.costo!.toStringAsFixed(2)}',
+                                key: Key('costo_${producto.id}'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: esComprado
+                                      ? Colors.black54
+                                      : const Color(0xFF234E3F),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],

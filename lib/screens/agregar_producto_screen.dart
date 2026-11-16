@@ -27,6 +27,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nombreCtrl = TextEditingController();
   final _cantidadCtrl = TextEditingController(text: '1');
+  final _costoCtrl = TextEditingController();
 
   late final ComprasService _compras =
       widget.comprasService ?? ComprasService();
@@ -40,6 +41,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
   void dispose() {
     _nombreCtrl.dispose();
     _cantidadCtrl.dispose();
+    _costoCtrl.dispose();
     super.dispose();
   }
 
@@ -57,6 +59,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
   void _limpiarFormulario() {
     _nombreCtrl.clear();
     _cantidadCtrl.text = '1';
+    _costoCtrl.clear();
   }
 
   Future<void> _guardarProducto() async {
@@ -84,10 +87,17 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
         return;
       }
 
+      double? costoParsed;
+      final costoTexto = _costoCtrl.text.trim();
+      if (costoTexto.isNotEmpty) {
+        costoParsed = double.tryParse(costoTexto);
+      }
+
       await _compras.agregarProducto(
         hogarId: hogarId,
         nombre: _nombreCtrl.text,
         cantidad: cantidadEntera,
+        costo: costoParsed,
       );
 
       if (!mounted) return;
@@ -243,6 +253,30 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                         ),
                       ),
                       validator: Validators.cantidadProducto,
+                      onChanged: (_) => setState(() => _errorGeneral = null),
+                      onFieldSubmitted: (_) => _guardarProducto(),
+                    ),
+                    const SizedBox(height: 18),
+                    TextFormField(
+                      key: const Key('campo_costo_producto'),
+                      controller: _costoCtrl,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      textInputAction: TextInputAction.done,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d{0,2}'),
+                        ),
+                      ],
+                      decoration: InputDecoration(
+                        labelText: 'Costo estimado (opcional)',
+                        hintText: 'Ej. 25.50',
+                        prefixIcon: Icon(
+                          Icons.attach_money_rounded,
+                          color: tema.colorScheme.primary,
+                        ),
+                      ),
+                      validator: Validators.costoProducto,
                       onChanged: (_) => setState(() => _errorGeneral = null),
                       onFieldSubmitted: (_) => _guardarProducto(),
                     ),
