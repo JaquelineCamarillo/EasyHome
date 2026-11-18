@@ -6,6 +6,7 @@ import '../models/integrante.dart';
 import '../routes.dart';
 import '../services/hogar_service.dart';
 import '../services/usuario_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/app_feedback.dart';
 
 /// Pantalla #7 — Perfil del hogar: integrantes y código de invitación,
@@ -577,13 +578,13 @@ class _IntegranteTile extends StatelessWidget {
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: integrante.esAdministrador
-                              ? const Color(0xFFFBF1DE)
-                              : const Color(0xFFE8F1EC),
+                              ? AppColors.arenaTaupe.withValues(alpha: 0.22)
+                              : AppColors.verdeOliva.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: integrante.esAdministrador
-                                ? const Color(0xFFE8BA6E)
-                                : const Color(0xFFB7D5C5),
+                                ? AppColors.arenaTaupe
+                                : AppColors.verdeOliva.withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
@@ -595,8 +596,8 @@ class _IntegranteTile extends StatelessWidget {
                                   : Icons.person_rounded,
                               size: 14,
                               color: integrante.esAdministrador
-                                  ? const Color(0xFFB57000)
-                                  : const Color(0xFF234E3F),
+                                  ? AppColors.bronceMocha
+                                  : AppColors.verdeOliva,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -607,8 +608,8 @@ class _IntegranteTile extends StatelessWidget {
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: integrante.esAdministrador
-                                    ? const Color(0xFFB57000)
-                                    : const Color(0xFF234E3F),
+                                    ? AppColors.bronceMocha
+                                    : AppColors.verdeOliva,
                               ),
                             ),
                           ],
@@ -853,20 +854,20 @@ class _IntegranteTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFBF1DE),
+                      color: AppColors.arenaTaupe.withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE8BA6E)),
+                      border: Border.all(color: AppColors.arenaTaupe),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.star_rounded,
-                            size: 16, color: Color(0xFFB57000)),
+                            size: 16, color: AppColors.bronceMocha),
                         SizedBox(width: 4),
                         Text(
                           'Admin',
                           style: TextStyle(
-                            color: Color(0xFFB57000),
+                            color: AppColors.bronceMocha,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),

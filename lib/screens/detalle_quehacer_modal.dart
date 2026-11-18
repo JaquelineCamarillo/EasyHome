@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/comentario.dart';
 import '../models/quehacer.dart';
 import '../services/quehaceres_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/app_feedback.dart';
 
 /// Modal con el detalle completo de un quehacer y su hilo de comentarios en tiempo real (#Requerimiento 1 Retro).
@@ -137,7 +138,7 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
             maxHeight: MediaQuery.of(context).size.height * 0.85,
           ),
           decoration: const BoxDecoration(
-            color: Color(0xFFF7F5EE),
+            color: AppColors.fondo,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
@@ -169,7 +170,7 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E2D27),
+                          color: AppColors.textoPrincipal,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -183,8 +184,8 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                                 horizontal: 10, vertical: 3),
                             decoration: BoxDecoration(
                               color: q.hecho
-                                  ? const Color(0xFFE8F1EC)
-                                  : const Color(0xFFFEF3C7),
+                                  ? AppColors.verdeOliva.withValues(alpha: 0.14)
+                                  : AppColors.arenaTaupe.withValues(alpha: 0.22),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
@@ -196,8 +197,8 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                                       : Icons.pending_actions_rounded,
                                   size: 14,
                                   color: q.hecho
-                                      ? const Color(0xFF234E3F)
-                                      : const Color(0xFFB45309),
+                                      ? AppColors.verdeOliva
+                                      : AppColors.bronceMocha,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
@@ -206,8 +207,8 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     color: q.hecho
-                                        ? const Color(0xFF234E3F)
-                                        : const Color(0xFFB45309),
+                                        ? AppColors.verdeOliva
+                                        : AppColors.bronceMocha,
                                   ),
                                 ),
                               ],
@@ -219,7 +220,7 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE0F2FE),
+                                color: AppColors.azulPizarra.withValues(alpha: 0.22),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Row(

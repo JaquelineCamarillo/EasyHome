@@ -10,8 +10,10 @@ import '../services/hogar_service.dart';
 import '../services/notificaciones_service.dart';
 import '../services/quehaceres_service.dart';
 import '../services/usuario_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/app_feedback.dart';
 import '../utils/validators.dart';
+import '../widgets/logo.dart';
 import '../widgets/producto_card.dart';
 import '../widgets/quehacer_card.dart';
 import 'detalle_quehacer_modal.dart';
@@ -661,12 +663,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       onChanged: (_) => setState(() {}),
                     )
-                  : const Text(
-                      'Lista de compras',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3,
-                      ),
+                  : const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        EasyHomeLogo(size: 30, mostrarSombra: false),
+                        SizedBox(width: 8),
+                        Text(
+                          'Lista de compras',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
                     ),
               actions: [
                 IconButton(
@@ -853,7 +862,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _indiceSeccion = index;
         });
       },
-      selectedItemColor: const Color(0xFF234E3F),
+      selectedItemColor: AppColors.verdeOliva,
       unselectedItemColor: Colors.black54,
       items: const [
         BottomNavigationBarItem(
@@ -1470,12 +1479,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             backgroundColor: Colors.transparent,
             scrolledUnderElevation: 0,
             elevation: 0,
-            title: const Text(
-              'Quehaceres',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-              ),
+            title: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                EasyHomeLogo(size: 30, mostrarSombra: false),
+                SizedBox(width: 8),
+                Text(
+                  'Quehaceres',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ],
             ),
             actions: [
               IconButton(

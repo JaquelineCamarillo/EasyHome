@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/quehacer.dart';
+import '../theme/app_theme.dart';
 
 /// Tarjeta reutilizable para visualizar y gestionar un [Quehacer].
 class QuehacerCard extends StatelessWidget {
@@ -34,11 +35,11 @@ class QuehacerCard extends StatelessWidget {
       key: Key('item_quehacer_${q.id}'),
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE8E4DA)),
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: AppColors.borde, width: 1.2),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         onLongPress: onLongPress,
         child: Padding(
@@ -51,7 +52,7 @@ class QuehacerCard extends StatelessWidget {
                 child: Checkbox(
                   key: Key('checkbox_quehacer_${q.id}'),
                   value: q.hecho,
-                  activeColor: const Color(0xFF234E3F),
+                  activeColor: AppColors.verdeOliva,
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   onChanged: esResponsable ? onCheckboxChanged : null,
@@ -75,14 +76,14 @@ class QuehacerCard extends StatelessWidget {
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             decoration: q.hecho ? TextDecoration.lineThrough : null,
-                            color: q.hecho ? Colors.black45 : const Color(0xFF1E2D27),
+                            color: q.hecho ? AppColors.textoSecundario.withValues(alpha: 0.6) : AppColors.textoPrincipal,
                           ),
                         ),
                         Container(
                           key: Key('badge_estado_${q.id}'),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: q.hecho ? const Color(0xFFE8F1EC) : const Color(0xFFFEF3C7),
+                            color: q.hecho ? AppColors.verdeOliva.withValues(alpha: 0.14) : AppColors.arenaTaupe.withValues(alpha: 0.22),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Wrap(
@@ -95,8 +96,8 @@ class QuehacerCard extends StatelessWidget {
                                     : Icons.pending_actions_rounded,
                                 size: 16,
                                 color: q.hecho
-                                    ? const Color(0xFF234E3F)
-                                    : const Color(0xFFB45309),
+                                    ? AppColors.verdeOliva
+                                    : AppColors.bronceMocha,
                               ),
                               Text(
                                 q.hecho ? 'Hecho' : 'Pendiente',
@@ -105,8 +106,8 @@ class QuehacerCard extends StatelessWidget {
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   color: q.hecho
-                                      ? const Color(0xFF234E3F)
-                                      : const Color(0xFFB45309),
+                                      ? AppColors.verdeOliva
+                                      : AppColors.bronceMocha,
                                 ),
                               ),
                             ],
@@ -120,10 +121,10 @@ class QuehacerCard extends StatelessWidget {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE0F2FE),
+                              color: AppColors.azulPizarra.withValues(alpha: 0.22),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFFBAE6FD),
+                                color: AppColors.azulPizarra.withValues(alpha: 0.45),
                               ),
                             ),
                             child: const Wrap(
@@ -133,14 +134,14 @@ class QuehacerCard extends StatelessWidget {
                                 Icon(
                                   Icons.repeat_rounded,
                                   size: 14,
-                                  color: Color(0xFF0369A1),
+                                  color: Color(0xFF385266),
                                 ),
                                 Text(
                                   'Semanal',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0369A1),
+                                    color: Color(0xFF385266),
                                   ),
                                 ),
                               ],
@@ -208,13 +209,13 @@ class QuehacerCard extends StatelessWidget {
                                 Icon(
                                   Icons.chat_bubble_outline_rounded,
                                   size: 14,
-                                  color: Color(0xFF234E3F),
+                                  color: AppColors.verdeOliva,
                                 ),
                                 Text(
                                   'Comentarios',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Color(0xFF234E3F),
+                                    color: AppColors.verdeOliva,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),

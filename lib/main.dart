@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'routes.dart';
+import 'theme/app_theme.dart';
 import 'screens/agregar_producto_screen.dart';
 import 'screens/agregar_quehacer_screen.dart';
 import 'screens/crear_unirse_hogar_screen.dart';
@@ -45,101 +46,10 @@ class EasyHomeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const verdePrincipal = Color(0xFF234E3F);
-    const cremaFondo = Color(0xFFF7F5EE);
-
     return MaterialApp(
       title: 'EasyHome',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: verdePrincipal,
-          primary: verdePrincipal,
-          secondary: const Color(0xFF386653),
-          surface: Colors.white,
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: cremaFondo,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-          scrolledUnderElevation: 0,
-          elevation: 0,
-          centerTitle: true,
-          titleTextStyle: TextStyle(
-            color: Color(0xFF1E2D27),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.4,
-          ),
-          iconTheme: IconThemeData(color: verdePrincipal),
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 0,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFE8E4DA), width: 1),
-          ),
-        ),
-        dialogTheme: DialogThemeData(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-        bottomSheetTheme: const BottomSheetThemeData(
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
-          labelStyle: const TextStyle(color: Colors.black54, fontSize: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE3DFD5), width: 1.2),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE3DFD5), width: 1.2),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: verdePrincipal, width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Colors.redAccent, width: 2),
-          ),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: verdePrincipal,
-            foregroundColor: Colors.white,
-            elevation: 1,
-            shadowColor: verdePrincipal.withValues(alpha: 0.25),
-            minimumSize: const Size.fromHeight(50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ),
-      ),
+      theme: AppTheme.tema,
       initialRoute: initialRoute,
       routes: {
         AppRoutes.registro: (_) => const RegistroScreen(),

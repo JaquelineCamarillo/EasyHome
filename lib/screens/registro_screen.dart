@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../routes.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/validators.dart';
+import '../widgets/logo.dart';
 
 /// Pantalla #3 — Registro de cuenta.
 class RegistroScreen extends StatefulWidget {
@@ -116,36 +118,17 @@ class _RegistroScreenState extends State<RegistroScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        color: tema.colorScheme.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: tema.colorScheme.primary.withValues(alpha: 0.3),
-                            blurRadius: 18,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.home_rounded,
-                        size: 42,
-                        color: Colors.white,
-                      ),
-                    ),
+                  const Center(
+                    child: EasyHomeLogo(size: 96),
                   ),
                   const SizedBox(height: 18),
                   Text(
                     'EasyHome',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: tema.colorScheme.primary,
-                      letterSpacing: -0.5,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.verdeOliva,
+                      letterSpacing: -0.8,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -153,21 +136,22 @@ class _RegistroScreenState extends State<RegistroScreen> {
                     'Organiza compras y tareas en familia',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.bodyMedium?.copyWith(
-                      color: Colors.black54,
+                      color: AppColors.textoSecundario,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 32),
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(26),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE8E4DA)),
-                      boxShadow: const [
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: AppColors.borde, width: 1.2),
+                      boxShadow: [
                         BoxShadow(
-                          color: Color(0x08000000),
-                          blurRadius: 16,
-                          offset: Offset(0, 6),
+                          color: AppColors.verdeOliva.withValues(alpha: 0.06),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),

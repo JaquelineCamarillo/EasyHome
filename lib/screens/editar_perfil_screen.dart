@@ -34,12 +34,12 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
   bool _cargando = false;
 
   static const List<String> _paletaColores = [
-    '0xFF1E4D3E', // Verde esmeralda
+    '0xFF787F5D', // Verde Oliva EasyHome
+    '0xFFA68568', // Bronce Mocha EasyHome
+    '0xFFAABACA', // Azul Pizarra EasyHome
+    '0xFFBEA489', // Arena Taupe EasyHome
     '0xFF2E6B56', // Salvia
     '0xFF2C3E50', // Azul marino
-    '0xFF3F51B5', // Índigo
-    '0xFF8E44AD', // Púrpura
-    '0xFFD97736', // Terracota cálido
     '0xFFC24134', // Carmesí suave
   ];
 

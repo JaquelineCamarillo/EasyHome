@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/producto.dart';
+import '../theme/app_theme.dart';
 
 /// Banner visual del progreso de la lista de compras del hogar.
 class ProgresoComprasBanner extends StatelessWidget {
@@ -24,9 +25,10 @@ class ProgresoComprasBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: completado ? const Color(0xFFBBE5D0) : const Color(0xFFE8E4DA),
+          color: completado ? AppColors.verdeOliva.withValues(alpha: 0.4) : AppColors.borde,
+          width: 1.2,
         ),
         boxShadow: const [
           BoxShadow(
@@ -46,7 +48,7 @@ class ProgresoComprasBanner extends StatelessWidget {
                     : Icons.shopping_cart_checkout_rounded,
                 size: 20,
                 color:
-                    completado ? const Color(0xFF1E4D3E) : const Color(0xFF3D705F),
+                    completado ? AppColors.verdeOliva : AppColors.bronceMocha,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -57,7 +59,7 @@ class ProgresoComprasBanner extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: completado ? const Color(0xFF1E4D3E) : Colors.black87,
+                    color: completado ? AppColors.verdeOliva : AppColors.textoPrincipal,
                   ),
                 ),
               ),
@@ -66,7 +68,7 @@ class ProgresoComprasBanner extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E4D3E),
+                  color: AppColors.verdeOliva,
                 ),
               ),
             ],
@@ -77,9 +79,9 @@ class ProgresoComprasBanner extends StatelessWidget {
             child: LinearProgressIndicator(
               value: porcentaje,
               minHeight: 6,
-              backgroundColor: const Color(0xFFECEAE4),
+              backgroundColor: AppColors.linoClaro.withValues(alpha: 0.4),
               valueColor: AlwaysStoppedAnimation<Color>(
-                completado ? Colors.green : const Color(0xFF1E4D3E),
+                completado ? AppColors.verdeOliva : AppColors.bronceMocha,
               ),
             ),
           ),
@@ -90,7 +92,7 @@ class ProgresoComprasBanner extends StatelessWidget {
                 const Icon(
                   Icons.receipt_long_rounded,
                   size: 16,
-                  color: Color(0xFF1E4D3E),
+                  color: AppColors.verdeOliva,
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -99,7 +101,7 @@ class ProgresoComprasBanner extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E4D3E),
+                    color: AppColors.verdeOliva,
                   ),
                 ),
               ],
@@ -216,23 +218,22 @@ class ProductoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tema = Theme.of(context);
     final esComprado = producto.comprado;
 
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
-      color: esComprado ? const Color(0xFFF0EDE5) : Colors.white,
+      color: esComprado ? const Color(0xFFF3EFE9) : Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         side: BorderSide(
-          color: esComprado ? const Color(0xFFDFD9CD) : const Color(0xFFE8E4DA),
-          width: 1,
+          color: esComprado ? AppColors.linoClaro : AppColors.borde,
+          width: 1.2,
         ),
       ),
       child: InkWell(
         key: Key('tile_${producto.id}'),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         onTap: onToggle,
         onLongPress: onLongPress,
         child: Padding(
@@ -247,7 +248,7 @@ class ProductoCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  activeColor: tema.colorScheme.primary,
+                  activeColor: AppColors.verdeOliva,
                   onChanged: (_) => onToggle(),
                 ),
               ),
@@ -263,7 +264,7 @@ class ProductoCard extends StatelessWidget {
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color:
-                            esComprado ? Colors.black45 : const Color(0xFF1C2C26),
+                            esComprado ? AppColors.textoSecundario.withValues(alpha: 0.6) : AppColors.textoPrincipal,
                         decoration: esComprado
                             ? TextDecoration.lineThrough
                             : TextDecoration.none,
@@ -279,7 +280,7 @@ class ProductoCard extends StatelessWidget {
                               size: 14,
                               color: esComprado
                                   ? Colors.black38
-                                  : tema.colorScheme.primary,
+                                  : AppColors.verdeOliva,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -290,7 +291,7 @@ class ProductoCard extends StatelessWidget {
                                 fontWeight: FontWeight.w500,
                                 color: esComprado
                                     ? Colors.black38
-                                    : Colors.black54,
+                                    : AppColors.textoSecundario,
                               ),
                             ),
                           ],
@@ -299,11 +300,11 @@ class ProductoCard extends StatelessWidget {
                             Container(
                               key: Key('badge_costo_${producto.id}'),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                  horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
                                 color: esComprado
                                     ? Colors.black12
-                                    : const Color(0xFFE8F1EC),
+                                    : AppColors.arenaTaupe.withValues(alpha: 0.22),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -314,7 +315,7 @@ class ProductoCard extends StatelessWidget {
                                   fontWeight: FontWeight.bold,
                                   color: esComprado
                                       ? Colors.black54
-                                      : const Color(0xFF234E3F),
+                                      : AppColors.bronceMocha,
                                 ),
                               ),
                             ),
@@ -330,20 +331,20 @@ class ProductoCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0x1F4CAF50),
+                    color: AppColors.verdeOliva.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_rounded, size: 14, color: Colors.green),
+                      Icon(Icons.check_rounded, size: 14, color: AppColors.verdeOliva),
                       SizedBox(width: 4),
                       Text(
                         'Comprado',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Colors.green,
+                          color: AppColors.verdeOliva,
                         ),
                       ),
                     ],
