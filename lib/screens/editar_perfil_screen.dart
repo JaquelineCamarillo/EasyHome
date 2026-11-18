@@ -122,15 +122,18 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Form(
-                key: modalKey,
-                child: Column(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Form(
+                    key: modalKey,
+                    child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -234,7 +237,9 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                 ),
               ),
             ),
-          );
+          ),
+        ),
+      );
         },
       ),
     );
@@ -342,7 +347,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: Center(
+          child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
@@ -602,6 +608,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

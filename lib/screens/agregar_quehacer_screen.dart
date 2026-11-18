@@ -191,9 +191,12 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
         _responsableSeleccionado = integrantes.first.uid;
       }
 
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -347,7 +350,9 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
             ],
           ),
         ),
-      );
+      ),
+    ),
+  );
     }
 
     return Scaffold(

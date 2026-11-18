@@ -240,13 +240,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final opcion = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Material(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          child: Column(
+      builder: (ctx) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: Material(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -327,7 +330,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
 
     if (!mounted || opcion == null) return;
 
@@ -368,12 +373,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
-            child: Material(
-              color: Colors.white,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
-              clipBehavior: Clip.antiAlias,
-              child: SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  clipBehavior: Clip.antiAlias,
+                  child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: Form(
                   key: formKey,
@@ -530,10 +538,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+      );
+    },
+  ),
+);
   }
 
   Future<void> _irAAgregarProducto() async {
@@ -715,94 +725,104 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(56),
-                child: Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEBE7DD),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: TabBar(
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: Colors.transparent,
-                    indicator: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x10000000),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 960),
+                    child: Container(
+                      margin:
+                          const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEBE7DD),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: TabBar(
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        indicator: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x10000000),
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    labelColor: tema.colorScheme.primary,
-                    unselectedLabelColor: Colors.black54,
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    tabs: [
-                      Tab(
-                        key: const Key('tab_pendientes'),
-                        text: 'Pendientes (${pendientes.length})',
+                        labelColor: tema.colorScheme.primary,
+                        unselectedLabelColor: Colors.black54,
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        tabs: [
+                          Tab(
+                            key: const Key('tab_pendientes'),
+                            text: 'Pendientes (${pendientes.length})',
+                          ),
+                          Tab(
+                            key: const Key('tab_comprados'),
+                            text: 'Comprados (${comprados.length})',
+                          ),
+                        ],
                       ),
-                      Tab(
-                        key: const Key('tab_comprados'),
-                        text: 'Comprados (${comprados.length})',
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
             body: SafeArea(
-              child: todos.isEmpty
-                  ? const EstadoVacioProductos()
-                  : Column(
-                      children: [
-                        if (todos.isNotEmpty && query.isEmpty)
-                          Builder(
-                            builder: (_) {
-                              final compradosConCosto = todos
-                                  .where((p) => p.comprado && p.costo != null);
-                              final totalCosto = compradosConCosto.isNotEmpty
-                                  ? compradosConCosto.fold<double>(
-                                      0.0,
-                                      (acc, p) => acc + (p.costo! * p.cantidad),
-                                    )
-                                  : null;
-                              return ProgresoComprasBanner(
-                                comprados:
-                                    todos.where((p) => p.comprado).length,
-                                total: todos.length,
-                                totalCostoComprados: totalCosto,
-                              );
-                            },
-                          ),
-                        Expanded(
-                          child: TabBarView(
-                            children: [
-                              ListaProductos(
-                                productos: pendientes,
-                                tipo: TipoListaProductos.pendientes,
-                                onToggle: _cambiarEstadoProducto,
-                                onDelete: _confirmarEliminarProducto,
-                                onLongPress: _mostrarMenuOpciones,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: todos.isEmpty
+                      ? const EstadoVacioProductos()
+                      : Column(
+                          children: [
+                            if (todos.isNotEmpty && query.isEmpty)
+                              Builder(
+                                builder: (_) {
+                                  final compradosConCosto = todos
+                                      .where((p) => p.comprado && p.costo != null);
+                                  final totalCosto = compradosConCosto.isNotEmpty
+                                      ? compradosConCosto.fold<double>(
+                                          0.0,
+                                          (acc, p) => acc + (p.costo! * p.cantidad),
+                                        )
+                                      : null;
+                                  return ProgresoComprasBanner(
+                                    comprados:
+                                        todos.where((p) => p.comprado).length,
+                                    total: todos.length,
+                                    totalCostoComprados: totalCosto,
+                                  );
+                                },
                               ),
-                              ListaProductos(
-                                productos: comprados,
-                                tipo: TipoListaProductos.comprados,
-                                onToggle: _cambiarEstadoProducto,
-                                onDelete: _confirmarEliminarProducto,
-                                onLongPress: _mostrarMenuOpciones,
+                            Expanded(
+                              child: TabBarView(
+                                children: [
+                                  ListaProductos(
+                                    productos: pendientes,
+                                    tipo: TipoListaProductos.pendientes,
+                                    onToggle: _cambiarEstadoProducto,
+                                    onDelete: _confirmarEliminarProducto,
+                                    onLongPress: _mostrarMenuOpciones,
+                                  ),
+                                  ListaProductos(
+                                    productos: comprados,
+                                    tipo: TipoListaProductos.comprados,
+                                    onToggle: _cambiarEstadoProducto,
+                                    onDelete: _confirmarEliminarProducto,
+                                    onLongPress: _mostrarMenuOpciones,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                ),
+              ),
             ),
             bottomNavigationBar: _crearBottomNav(),
             floatingActionButton: FloatingActionButton.extended(
@@ -908,13 +928,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final opcion = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Material(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          child: Column(
+      builder: (ctx) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: Material(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1016,7 +1039,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
 
     if (!mounted || opcion == null) return;
 
@@ -1067,12 +1092,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
-            child: Material(
-              color: Colors.white,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
-              clipBehavior: Clip.antiAlias,
-              child: SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  clipBehavior: Clip.antiAlias,
+                  child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: Form(
                   key: formKey,
@@ -1259,10 +1287,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+      );
+    },
+  ),
+);
   }
 
   Future<void> _mostrarDialogoReasignarQuehacer(
@@ -1509,7 +1539,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 )
               : null,
           body: SafeArea(
-            child: StreamBuilder<List<Quehacer>>(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: StreamBuilder<List<Quehacer>>(
               stream: _obtenerQuehaceresStream(hogarId),
               builder: (context, quehaceresSnap) {
                 if (quehaceresSnap.hasError) {
@@ -1680,9 +1713,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               },
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
+  },
+);
   }
 }
 

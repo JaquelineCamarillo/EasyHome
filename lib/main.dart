@@ -56,30 +56,44 @@ class EasyHomeApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: verdePrincipal,
           primary: verdePrincipal,
+          secondary: const Color(0xFF386653),
           surface: Colors.white,
           brightness: Brightness.light,
         ),
         scaffoldBackgroundColor: cremaFondo,
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
           scrolledUnderElevation: 0,
           elevation: 0,
           centerTitle: true,
           titleTextStyle: TextStyle(
             color: Color(0xFF1E2D27),
-            fontSize: 19,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
-            letterSpacing: -0.3,
+            letterSpacing: -0.4,
           ),
           iconTheme: IconThemeData(color: verdePrincipal),
         ),
         cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 0,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: const BorderSide(color: Color(0xFFE8E4DA), width: 1),
           ),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,

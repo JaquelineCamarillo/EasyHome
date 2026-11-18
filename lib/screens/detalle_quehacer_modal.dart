@@ -32,11 +32,16 @@ class DetalleQuehacerModal extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DetalleQuehacerModal(
-        quehacer: quehacer,
-        responsableNombre: responsableNombre,
-        quehaceresService: quehaceresService,
-        usuarioActualNombre: usuarioActualNombre,
+      builder: (_) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: DetalleQuehacerModal(
+            quehacer: quehacer,
+            responsableNombre: responsableNombre,
+            quehaceresService: quehaceresService,
+            usuarioActualNombre: usuarioActualNombre,
+          ),
+        ),
       ),
     );
   }
