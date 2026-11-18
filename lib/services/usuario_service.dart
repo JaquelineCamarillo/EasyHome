@@ -30,6 +30,14 @@ class UsuarioService {
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
   FirebaseFirestore get _db => _firestoreOverride ?? FirebaseFirestore.instance;
 
+  User? get usuarioActual {
+    try {
+      return _auth.currentUser;
+    } catch (_) {
+      return null;
+    }
+  }
+
   String? get usuarioActualId {
     if (_usuarioActualIdOverride != null) return _usuarioActualIdOverride;
     try {
@@ -128,6 +136,44 @@ class UsuarioService {
         throw const UsuarioException(msgContrasenaIncorrecta);
       }
       throw const UsuarioException(msgErrorContrasena);
+    }
+  }
+
+  /// Sincroniza el correo de Firebase Auth en el documento de Firestore del usuario actual.
+  Future<void> sincronizarCorreoActual() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null || user.email == null || user.email!.isEmpty) return;
+      final doc = await _db.collection('usuarios').doc(user.uid).get();
+      if (!doc.exists) return;
+      if (doc.data()?['correo'] != user.email) {
+        await _db.collection('usuarios').doc(user.uid).update({
+          'correo': user.email,
+        });
+      }
+    } catch (e) {
+      if (!e.toString().contains('no-app')) {
+        debugPrint('No se pudo sincronizar correo del usuario actual: $e');
+      }
+    }
+  }
+
+  /// Permite al administrador registrar o actualizar el correo de un integrante.
+  Future<void> actualizarCorreoIntegrante({
+    required String integranteUid,
+    required String nuevoCorreo,
+  }) async {
+    final correoLimpio = nuevoCorreo.trim();
+    if (correoLimpio.isEmpty) {
+      throw const UsuarioException('El correo no puede estar vacío');
+    }
+    try {
+      await _db.collection('usuarios').doc(integranteUid).update({
+        'correo': correoLimpio,
+      });
+    } on FirebaseException catch (e) {
+      debugPrint('Firestore error al actualizar correo de integrante: ${e.code}');
+      throw const UsuarioException('No se pudo actualizar el correo');
     }
   }
 

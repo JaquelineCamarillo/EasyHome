@@ -57,6 +57,7 @@ class AuthService {
     try {
       await _db.collection('usuarios').doc(user.uid).set({
         'nombre': nombre.trim(),
+        'correo': correo.trim(),
         'esAdministrador': false,
         'hogarId': null,
       });
@@ -93,7 +94,17 @@ class AuthService {
 
     try {
       final doc = await _db.collection('usuarios').doc(user.uid).get();
-      return doc.data()?['hogarId'] as String?;
+      final data = doc.data();
+      if (data != null && (data['correo'] == null || (data['correo'] as String).isEmpty)) {
+        if (user.email != null && user.email!.isNotEmpty) {
+          try {
+            await _db.collection('usuarios').doc(user.uid).update({
+              'correo': user.email,
+            });
+          } catch (_) {}
+        }
+      }
+      return data?['hogarId'] as String?;
     } on FirebaseException catch (e) {
       debugPrint('Firestore error: ${e.code} - ${e.message}');
       // No dejamos una sesión abierta a medias si no pudimos leer el perfil.

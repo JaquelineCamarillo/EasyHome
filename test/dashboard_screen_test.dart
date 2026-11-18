@@ -38,6 +38,7 @@ class FakeComprasService extends ComprasService {
     required String productoId,
     required String nombre,
     required int cantidad,
+    double? costo,
   }) async {
     productoIdEditado = productoId;
     nombreEditado = nombre;

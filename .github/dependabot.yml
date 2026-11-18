@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # Monitoreo y actualización semanal de dependencias Flutter / Dart (pub)
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "flutter"
+
+  # Monitoreo y actualización semanal de dependencias Node.js del Notificador FCM (npm)
+  - package-ecosystem: "npm"
+    directory: "/notificador"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "node"
+      - "notificador"
+
+  # Monitoreo y actualización de acciones en GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"

@@ -21,36 +21,46 @@ service cloud.firestore {
       return val is string && val.size() >= minLen && val.size() <= maxLen;
     }
 
+    function esCostoValido(data) {
+      return !('costo' in data) || data.costo == null || (data.costo is number && data.costo >= 0);
+    }
+
     // --- Colección: usuarios ---
     match /usuarios/{uid} {
-      // Lectura: Cualquier usuario autenticado (necesario para ver compañeros de hogar y perfiles)
-      allow read: if estaAutenticado();
+      // Lectura: Únicamente el propio usuario o integrantes que pertenezcan a su mismo hogar
+      allow read: if estaAutenticado() && (
+        request.auth.uid == uid ||
+        (resource.data.hogarId != null && resource.data.hogarId == miHogarId())
+      );
 
       // Creación: Al registrarse, solo puede crear su propio perfil con esAdministrador en false y sin hogar
       allow create: if estaAutenticado()
                     && request.auth.uid == uid
                     && esTextoValido(request.resource.data.nombre, 1, 60)
                     && request.resource.data.esAdministrador == false
-                    && request.resource.data.hogarId == null;
+                    && request.resource.data.hogarId == null
+                    && (!('correo' in request.resource.data) || request.resource.data.correo is string);
 
       // Actualización:
-      // 1. El propio usuario actualiza solo nombre o avatarColor
+      // 1. El propio usuario actualiza solo nombre, avatarColor o correo propio
       // 2. El propio usuario se une a un hogar (esAdministrador SIEMPRE false)
       // 3. El propio usuario crea un hogar y se vuelve admin (se valida que él sea el creador del hogar)
       // 4. El propio usuario se sale del hogar (hogarId null, esAdministrador false)
       // 5. El administrador del hogar cambia el rol de un integrante o lo expulsa
       allow update: if estaAutenticado() && (
-        // Caso 1: Actualizar nombre o avatar
+        // Caso 1: Actualizar nombre, avatar o correo propio
         (request.auth.uid == uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatarColor'])
-          && (!('nombre' in request.resource.data) || esTextoValido(request.resource.data.nombre, 1, 60)))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'avatarColor', 'correo'])
+          && (!('nombre' in request.resource.data) || esTextoValido(request.resource.data.nombre, 1, 60))
+          && (!('correo' in request.resource.data) || request.resource.data.correo is string))
 
-        // Caso 2: Unirse a un hogar (NO puede ponerse admin)
+        // Caso 2: Unirse a un hogar (NO puede ponerse admin y debe existir el hogar)
         || (request.auth.uid == uid
           && resource.data.hogarId == null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador'])
           && request.resource.data.esAdministrador == false
-          && request.resource.data.hogarId is string)
+          && request.resource.data.hogarId is string
+          && exists(/databases/$(database)/documents/hogares/$(request.resource.data.hogarId)))
 
         // Caso 3: Crear hogar (se vuelve admin solo si en la misma tx creó el hogar)
         || (request.auth.uid == uid
@@ -65,10 +75,11 @@ service cloud.firestore {
           && request.resource.data.hogarId == null
           && request.resource.data.esAdministrador == false)
 
-        // Caso 5: Admin del hogar promueve/degrada o expulsa a un integrante de su hogar
+        // Caso 5: Admin del hogar promueve/degrada, actualiza correo o expulsa a un integrante de su hogar
         || (resource.data.hogarId != null
           && soyAdminDe(resource.data.hogarId)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hogarId', 'esAdministrador', 'correo'])
+          && (!('correo' in request.resource.data) || request.resource.data.correo is string)
           && (
             (request.resource.data.hogarId == resource.data.hogarId && request.resource.data.esAdministrador is bool)
             || (request.resource.data.hogarId == null && request.resource.data.esAdministrador == false)
@@ -115,7 +126,8 @@ service cloud.firestore {
                     && esTextoValido(request.resource.data.nombre, 1, 120)
                     && request.resource.data.cantidad is int
                     && request.resource.data.cantidad > 0
-                    && request.resource.data.comprado is bool;
+                    && request.resource.data.comprado is bool
+                    && esCostoValido(request.resource.data);
 
       allow update: if estaAutenticado()
                     && resource.data.hogarId == miHogarId()
@@ -123,7 +135,8 @@ service cloud.firestore {
                     && esTextoValido(request.resource.data.nombre, 1, 120)
                     && request.resource.data.cantidad is int
                     && request.resource.data.cantidad > 0
-                    && request.resource.data.comprado is bool;
+                    && request.resource.data.comprado is bool
+                    && esCostoValido(request.resource.data);
 
       allow delete: if estaAutenticado() && resource.data.hogarId == miHogarId();
     }
@@ -161,11 +174,34 @@ service cloud.firestore {
 
       // Solo el admin del hogar puede eliminar quehaceres
       allow delete: if estaAutenticado() && soyAdminDe(resource.data.hogarId);
+
+      // Subcolección: comentarios (#Requerimiento 1 Retro)
+      match /comentarios/{comentarioId} {
+        // Solo integrantes del mismo hogar pueden leer los comentarios
+        allow read: if estaAutenticado()
+                    && get(/databases/$(database)/documents/quehaceres/$(quehacerId)).data.hogarId == miHogarId();
+
+        // Cualquier integrante del mismo hogar puede escribir un comentario (1 a 300 caracteres)
+        allow create: if estaAutenticado()
+                      && get(/databases/$(database)/documents/quehaceres/$(quehacerId)).data.hogarId == miHogarId()
+                      && request.resource.data.autorId == request.auth.uid
+                      && esTextoValido(request.resource.data.texto, 1, 300)
+                      && esTextoValido(request.resource.data.autorNombre, 1, 60);
+
+        // Inmutables: no se pueden editar ni borrar comentarios para preservar el historial
+        allow update, delete: if false;
+      }
     }
 
     // --- Colección en desuso o cerrada: codigosInvitacion ---
     // Los códigos se gestionan de forma segura embebidos en el documento de cada hogar
     match /codigosInvitacion/{codigoId} {
+      allow read, write: if false;
+    }
+
+    // --- Regla por defecto (Default Deny / Catch-All) ---
+    // Deniega explícitamente lectura y escritura a cualquier colección o documento no declarado
+    match /{document=**} {
       allow read, write: if false;
     }
   }

@@ -54,6 +54,10 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
         return;
       }
       _hogarIdResuelto = hogarId;
+      // Sincronizar el correo del usuario actual en Firestore si aún no lo tiene
+      try {
+        _usuarios.sincronizarCorreoActual();
+      } catch (_) {}
       // Los streams se crean una sola vez (no dentro de build).
       setState(() {
         _hogarStream = _hogares.observarHogar(hogarId);
@@ -297,6 +301,7 @@ class _ListaIntegrantes extends StatelessWidget {
               integrante: integrante,
               esYo: integrante.uid == usuarioActualId,
               puedeAdministrar: soyAdmin && integrante.uid != usuarioActualId,
+              soyAdmin: soyAdmin,
               usuarioService: usuarioService,
             );
           },
@@ -311,12 +316,14 @@ class _IntegranteTile extends StatelessWidget {
     required this.integrante,
     this.esYo = false,
     this.puedeAdministrar = false,
+    this.soyAdmin = false,
     this.usuarioService,
   });
 
   final Integrante integrante;
   final bool esYo;
   final bool puedeAdministrar;
+  final bool soyAdmin;
   final UsuarioService? usuarioService;
 
   Future<void> _cambiarRol(BuildContext context, bool nuevoEsAdmin) async {
@@ -386,12 +393,353 @@ class _IntegranteTile extends StatelessWidget {
     }
   }
 
+  Future<void> _mostrarDialogoEditarCorreo(BuildContext context) async {
+    final ctrl = TextEditingController(text: integrante.correo ?? '');
+    final formKey = GlobalKey<FormState>();
+
+    final guardado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.email_outlined, color: Color(0xFF234E3F)),
+            SizedBox(width: 8),
+            Text(
+              'Registrar correo',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Ingresa el correo electrónico para ${integrante.nombre}:',
+                style: const TextStyle(fontSize: 13, color: Colors.black87),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                key: const Key('campo_editar_correo_integrante'),
+                controller: ctrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Correo electrónico',
+                  hintText: 'ejemplo@correo.com',
+                  prefixIcon: Icon(Icons.alternate_email_rounded),
+                ),
+                validator: (val) {
+                  final v = (val ?? '').trim();
+                  if (v.isEmpty) return 'Ingresa un correo';
+                  if (!v.contains('@') || !v.contains('.')) return 'Correo inválido';
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            key: const Key('boton_guardar_correo_integrante'),
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              try {
+                await usuarioService?.actualizarCorreoIntegrante(
+                  integranteUid: integrante.uid,
+                  nuevoCorreo: ctrl.text.trim(),
+                );
+                if (!ctx.mounted) return;
+                Navigator.of(ctx).pop(true);
+              } catch (_) {
+                if (!ctx.mounted) return;
+                AppFeedback.mostrarError(ctx, 'No se pudo guardar el correo');
+              }
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (guardado == true && context.mounted) {
+      AppFeedback.mostrarExito(context, 'Correo registrado');
+    }
+  }
+
+  void _mostrarDetallePerfil(
+    BuildContext context,
+    ThemeData tema,
+    Color avatarColor,
+    String inicial,
+  ) {
+    final correoEfectivo = esYo
+        ? (integrante.correo ?? usuarioService?.usuarioActual?.email)
+        : integrante.correo;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: avatarColor,
+                  foregroundColor: Colors.white,
+                  child: Text(
+                    inicial,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              integrante.nombre,
+                              key: Key('detalle_nombre_${integrante.uid}'),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E2D27),
+                              ),
+                            ),
+                          ),
+                          if (esYo) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFECEAE4),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Tú',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: integrante.esAdministrador
+                              ? const Color(0xFFFBF1DE)
+                              : const Color(0xFFE8F1EC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: integrante.esAdministrador
+                                ? const Color(0xFFE8BA6E)
+                                : const Color(0xFFB7D5C5),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              integrante.esAdministrador
+                                  ? Icons.star_rounded
+                                  : Icons.person_rounded,
+                              size: 14,
+                              color: integrante.esAdministrador
+                                  ? const Color(0xFFB57000)
+                                  : const Color(0xFF234E3F),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              integrante.esAdministrador
+                                  ? 'Administrador del hogar'
+                                  : 'Integrante',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: integrante.esAdministrador
+                                    ? const Color(0xFFB57000)
+                                    : const Color(0xFF234E3F),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Divider(height: 1, color: Color(0xFFE8E4DA)),
+            const SizedBox(height: 16),
+            // Información de correo electrónico
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F5EE),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE8E4DA)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.email_outlined,
+                      color: Color(0xFF234E3F), size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Correo electrónico',
+                          style: TextStyle(fontSize: 11, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          soyAdmin
+                              ? (correoEfectivo != null &&
+                                      correoEfectivo.isNotEmpty
+                                  ? correoEfectivo
+                                  : 'Sin correo registrado')
+                              : 'Visible solo para administradores',
+                          key: Key('detalle_correo_${integrante.uid}'),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: soyAdmin
+                                ? const Color(0xFF1E2D27)
+                                : Colors.black45,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (soyAdmin &&
+                      correoEfectivo != null &&
+                      correoEfectivo.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.copy_rounded,
+                          size: 18, color: Colors.black45),
+                      tooltip: 'Copiar correo',
+                      onPressed: () async {
+                        await Clipboard.setData(
+                            ClipboardData(text: correoEfectivo));
+                        if (!context.mounted) return;
+                        AppFeedback.mostrarExito(context, 'Correo copiado');
+                      },
+                    ),
+                  if (soyAdmin)
+                    IconButton(
+                      key: Key('boton_editar_correo_${integrante.uid}'),
+                      icon: const Icon(Icons.edit_outlined,
+                          size: 18, color: Color(0xFF234E3F)),
+                      tooltip: correoEfectivo != null && correoEfectivo.isNotEmpty
+                          ? 'Editar correo'
+                          : 'Registrar correo',
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        _mostrarDialogoEditarCorreo(context);
+                      },
+                    ),
+                ],
+              ),
+            ),
+            if (puedeAdministrar) ...[
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: Icon(
+                        integrante.esAdministrador
+                            ? Icons.person_outline_rounded
+                            : Icons.star_outline_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        integrante.esAdministrador
+                            ? 'Quitar admin'
+                            : 'Hacer admin',
+                      ),
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        _cambiarRol(context, !integrante.esAdministrador);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor:
+                            const Color(0xFFC24134).withValues(alpha: 0.1),
+                        foregroundColor: const Color(0xFFC24134),
+                      ),
+                      icon: const Icon(Icons.person_remove_outlined, size: 18),
+                      label: const Text('Remover'),
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        _confirmarExpulsar(context);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     final inicial = integrante.nombre.isNotEmpty
         ? integrante.nombre.characters.first.toUpperCase()
         : 'U';
+    final correoEfectivo = esYo
+        ? (integrante.correo ?? usuarioService?.usuarioActual?.email)
+        : integrante.correo;
 
     Color avatarColor = tema.colorScheme.primary;
     if (integrante.avatarColor != null) {
@@ -402,7 +750,6 @@ class _IntegranteTile extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -415,124 +762,166 @@ class _IntegranteTile extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: avatarColor,
-            foregroundColor: Colors.white,
-            child: Text(
-              inicial,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: Key('tile_integrante_${integrante.uid}'),
+          borderRadius: BorderRadius.circular(16),
+          onTap: () =>
+              _mostrarDetallePerfil(context, tema, avatarColor, inicial),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                Flexible(
+                CircleAvatar(
+                  backgroundColor: avatarColor,
+                  foregroundColor: Colors.white,
                   child: Text(
-                    integrante.nombre,
-                    style: tema.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                    inicial,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                if (esYo) ...[
-                  const SizedBox(width: 6),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              integrante.nombre,
+                              style: tema.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (esYo) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFECEAE4),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Tú',
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black54),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (soyAdmin &&
+                          correoEfectivo != null &&
+                          correoEfectivo.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          correoEfectivo,
+                          key: Key('correo_integrante_${integrante.uid}'),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (integrante.esAdministrador) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    key: const Key('etiqueta_admin'),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFECEAE4),
-                      borderRadius: BorderRadius.circular(8),
+                      color: const Color(0xFFFBF1DE),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE8BA6E)),
                     ),
-                    child: const Text(
-                      'Tú',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded,
+                            size: 16, color: Color(0xFFB57000)),
+                        SizedBox(width: 4),
+                        Text(
+                          'Admin',
+                          style: TextStyle(
+                            color: Color(0xFFB57000),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                ],
+                if (puedeAdministrar) ...[
+                  const SizedBox(width: 4),
+                  PopupMenuButton<String>(
+                    key: Key('menu_integrante_${integrante.uid}'),
+                    icon: const Icon(Icons.more_vert_rounded,
+                        color: Colors.black45, size: 20),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    onSelected: (val) {
+                      if (val == 'rol') {
+                        _cambiarRol(context, !integrante.esAdministrador);
+                      } else if (val == 'expulsar') {
+                        _confirmarExpulsar(context);
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'rol',
+                        child: Row(
+                          children: [
+                            Icon(
+                              integrante.esAdministrador
+                                  ? Icons.person_outline_rounded
+                                  : Icons.star_outline_rounded,
+                              size: 20,
+                              color: Colors.black87,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              integrante.esAdministrador
+                                  ? 'Quitar rol de admin'
+                                  : 'Hacer administrador',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'expulsar',
+                        child: Row(
+                          children: [
+                            Icon(Icons.person_remove_outlined,
+                                size: 20, color: Color(0xFFC24134)),
+                            SizedBox(width: 10),
+                            Text(
+                              'Remover del hogar',
+                              style: TextStyle(
+                                  fontSize: 13, color: Color(0xFFC24134)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ],
             ),
           ),
-          if (integrante.esAdministrador) ...[
-            Container(
-              key: const Key('etiqueta_admin'),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFBF1DE),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE8BA6E)),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.star_rounded, size: 16, color: Color(0xFFB57000)),
-                  SizedBox(width: 4),
-                  Text(
-                    'Admin',
-                    style: TextStyle(
-                      color: Color(0xFFB57000),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          if (puedeAdministrar) ...[
-            const SizedBox(width: 4),
-            PopupMenuButton<String>(
-              key: Key('menu_integrante_${integrante.uid}'),
-              icon: const Icon(Icons.more_vert_rounded, color: Colors.black45, size: 20),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              onSelected: (val) {
-                if (val == 'rol') {
-                  _cambiarRol(context, !integrante.esAdministrador);
-                } else if (val == 'expulsar') {
-                  _confirmarExpulsar(context);
-                }
-              },
-              itemBuilder: (ctx) => [
-                PopupMenuItem(
-                  value: 'rol',
-                  child: Row(
-                    children: [
-                      Icon(
-                        integrante.esAdministrador
-                            ? Icons.person_outline_rounded
-                            : Icons.star_outline_rounded,
-                        size: 20,
-                        color: Colors.black87,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        integrante.esAdministrador
-                            ? 'Quitar rol de admin'
-                            : 'Hacer administrador',
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'expulsar',
-                  child: Row(
-                    children: [
-                      Icon(Icons.person_remove_outlined, size: 20, color: Color(0xFFC24134)),
-                      SizedBox(width: 10),
-                      Text(
-                        'Remover del hogar',
-                        style: TextStyle(fontSize: 13, color: Color(0xFFC24134)),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
