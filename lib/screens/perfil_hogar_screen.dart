@@ -171,6 +171,55 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
     }
   }
 
+  Future<void> _confirmarSalirHogar() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.exit_to_app_rounded, color: AppColors.error),
+            SizedBox(width: 8),
+            Text(
+              'Salir del hogar',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: const Text(
+          '¿Estás seguro de que deseas salir de este hogar? '
+          'Podrás unirte al hogar correcto ingresando su código de invitación.',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Salir del hogar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true && mounted) {
+      try {
+        await _usuarios.salirDelHogar();
+        if (!mounted) return;
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.hogar,
+          (_) => false,
+        );
+      } catch (_) {
+        if (!mounted) return;
+        AppFeedback.mostrarError(context, 'No se pudo salir del hogar');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -252,6 +301,18 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
               codigo: hogar.codigoInvitacion,
               onCopiar: () => _copiarCodigo(hogar.codigoInvitacion),
               onRegenerar: _confirmarRegenerarCodigo,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 12),
+              child: TextButton.icon(
+                key: const Key('boton_salir_hogar_perfil'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                ),
+                icon: const Icon(Icons.exit_to_app_rounded, size: 18),
+                label: const Text('Salir de este hogar'),
+                onPressed: _confirmarSalirHogar,
+              ),
             ),
           ],
         );

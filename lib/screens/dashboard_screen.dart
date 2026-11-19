@@ -1167,18 +1167,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             Wrap(
                               spacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 if (fechaSeleccionada != null)
-                                  IconButton(
+                                  TextButton(
                                     key: const Key(
                                         'boton_quitar_fecha_edicion'),
-                                    icon: const Icon(Icons.close_rounded,
-                                        size: 18, color: Colors.redAccent),
                                     onPressed: () {
                                       setModalState(() {
                                         fechaSeleccionada = null;
                                       });
                                     },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: const Color(0xFF8A6B53),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 6),
+                                    ),
+                                    child: const Text(
+                                      'Quitar fecha',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
                                   ),
                                 FilledButton.tonal(
                                   key: const Key(

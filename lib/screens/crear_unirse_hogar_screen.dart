@@ -27,14 +27,82 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
 
   bool get _formularioValido => Validators.nombreHogar(_nombreCtrl.text) == null;
 
+  bool get _pareceCodigoInvitacion {
+    final t = _nombreCtrl.text.trim();
+    return t.length == 6 && RegExp(r'^[A-HJ-NP-Z2-9a-hj-np-z]{6}$').hasMatch(t);
+  }
+
   @override
   void dispose() {
     _nombreCtrl.dispose();
     super.dispose();
   }
 
+  Future<void> _unirseConCodigoDetectado() async {
+    final cod = _nombreCtrl.text.trim().toUpperCase();
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _cargando = true;
+      _errorGeneral = null;
+    });
+
+    try {
+      await _hogares.unirseAHogar(codigo: cod);
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+    } on HogarException catch (e) {
+      _mostrarError(e.mensaje);
+    } catch (_) {
+      _mostrarError(HogarService.msgNoSePudoUnir);
+    }
+  }
+
   Future<void> _crearHogar() async {
     if (!_formularioValido || _cargando) return;
+
+    if (_pareceCodigoInvitacion) {
+      final cod = _nombreCtrl.text.trim().toUpperCase();
+      final accion = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.help_outline_rounded, color: AppColors.bronceMocha),
+              SizedBox(width: 8),
+              Text('¿Unirte o Crear?',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Text(
+            'Ingresaste "$cod", que parece ser un código de invitación.\n\n'
+            '• Si alguien te dio este código para unirte a su hogar, selecciona "Unirme con código".\n\n'
+            '• Si este es el nombre de tu propio hogar nuevo, selecciona "Crear nuevo hogar".',
+            style: const TextStyle(fontSize: 14),
+          ),
+          actions: [
+            OutlinedButton(
+              onPressed: () => Navigator.of(ctx).pop('crear'),
+              child: const Text('Crear nuevo hogar'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.bronceMocha),
+              onPressed: () => Navigator.of(ctx).pop('unir'),
+              child: const Text('Unirme con código'),
+            ),
+          ],
+        ),
+      );
+      if (accion == null) return;
+      if (accion == 'unir') {
+        await _unirseConCodigoDetectado();
+        return;
+      }
+    }
+
+    if (!mounted) return;
     FocusScope.of(context).unfocus();
     setState(() {
       _cargando = true;
@@ -96,7 +164,78 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                       color: AppColors.textoSecundario,
                     ),
                   ),
-                  const SizedBox(height: 32),
+
+                  // Tarjeta destacada de "¿Ya tienes un código?"
+                  Container(
+                    margin: const EdgeInsets.only(top: 24, bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.verdeOliva.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AppColors.verdeOliva.withValues(alpha: 0.35),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.verdeOliva,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.key_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '¿Tienes un código?',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: AppColors.textoPrincipal,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Únete a un hogar existente aquí',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textoSecundario,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.verdeOliva,
+                            side: const BorderSide(
+                                color: AppColors.verdeOliva, width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                          ),
+                          onPressed: () => Navigator.of(context)
+                              .pushNamed(AppRoutes.unirseHogar),
+                          child: const Text('Unirme'),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(26),
                     decoration: BoxDecoration(
@@ -133,6 +272,72 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                           onChanged: (_) => setState(() => _errorGeneral = null),
                           onFieldSubmitted: (_) => _crearHogar(),
                         ),
+                        if (_pareceCodigoInvitacion) ...[
+                          Container(
+                            key: const Key('aviso_parece_codigo'),
+                            margin: const EdgeInsets.only(top: 10, bottom: 6),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color:
+                                  AppColors.arenaTaupe.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AppColors.bronceMocha
+                                    .withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.info_outline_rounded,
+                                        size: 18,
+                                        color: AppColors.bronceMocha),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '¿"${_nombreCtrl.text.trim().toUpperCase()}" es un código de invitación?',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: AppColors.textoPrincipal,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  'Si deseas unirte a un hogar con este código, presiona el botón abajo para no crear una casa duplicada.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textoSecundario,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                FilledButton.icon(
+                                  key: const Key('boton_unirse_con_este_codigo'),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.bronceMocha,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size.fromHeight(42),
+                                  ),
+                                  icon: const Icon(Icons.group_add_rounded,
+                                      size: 18),
+                                  label: const Text(
+                                    'Unirme al hogar con este código',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  onPressed: _cargando
+                                      ? null
+                                      : _unirseConCodigoDetectado,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         if (_errorGeneral != null) ...[
                           Container(

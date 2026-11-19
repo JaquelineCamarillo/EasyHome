@@ -275,18 +275,28 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
                     ),
                     Wrap(
                       spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         if (_fechaSeleccionada != null)
-                          IconButton(
+                          TextButton(
                             key: const Key('boton_quitar_fecha'),
-                            tooltip: 'Quitar fecha',
-                            icon: const Icon(Icons.close_rounded,
-                                size: 20, color: Colors.redAccent),
                             onPressed: () {
                               setState(() {
                                 _fechaSeleccionada = null;
                               });
                             },
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF8A6B53),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                            ),
+                            child: const Text(
+                              'Quitar fecha',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
                         FilledButton.tonal(
                           key: const Key('boton_seleccionar_fecha'),
