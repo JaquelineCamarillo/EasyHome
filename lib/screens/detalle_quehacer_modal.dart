@@ -64,6 +64,30 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
     super.dispose();
   }
 
+  static const List<Color> _coloresAutores = [
+    AppColors.verdeOliva,
+    AppColors.bronceMocha,
+    Color(0xFF436573),
+    Color(0xFF7A6852),
+    Color(0xFF4C6E56),
+    Color(0xFF865963),
+  ];
+
+  Color _obtenerColorAutor(String nombre) {
+    if (nombre.isEmpty) return _coloresAutores[0];
+    final hash = nombre.codeUnits.fold(0, (acc, c) => acc + c);
+    return _coloresAutores[hash % _coloresAutores.length];
+  }
+
+  String _obtenerIniciales(String nombre) {
+    final partes = nombre.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (partes.isEmpty) return '?';
+    if (partes.length == 1) {
+      return partes[0].substring(0, partes[0].length >= 2 ? 2 : 1).toUpperCase();
+    }
+    return '${partes[0][0]}${partes[1][0]}'.toUpperCase();
+  }
+
   String _formatearFechaHora(DateTime dt) {
     final d = dt.day.toString().padLeft(2, '0');
     final m = dt.month.toString().padLeft(2, '0');
@@ -337,94 +361,148 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                     final c = comentarios[index];
                     final esMio = (c.autorId ==
                         widget.quehaceresService.usuarioActualId);
+                    final autorColor = esMio
+                        ? AppColors.verdeOliva
+                        : _obtenerColorAutor(c.autorNombre);
+                    final iniciales = _obtenerIniciales(c.autorNombre);
 
                     return Padding(
                       key: Key('item_comentario_${c.id}'),
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.only(bottom: 14),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: esMio
+                            ? CrossAxisAlignment.end
+                            : CrossAxisAlignment.start,
                         children: [
-                          // Nombre del autor y fecha/hora
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        c.autorNombre,
-                                        key: Key('autor_comentario_${c.id}'),
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                          color: Color(0xFF1E2D27),
-                                        ),
+                          // Cabecera: Avatar, Nombre de autor, 'Tú' badge y Fecha/Hora
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: esMio
+                                  ? MainAxisAlignment.end
+                                  : MainAxisAlignment.start,
+                              children: [
+                                if (!esMio) ...[
+                                  CircleAvatar(
+                                    radius: 11,
+                                    backgroundColor: autorColor,
+                                    child: Text(
+                                      iniciales,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    if (esMio) ...[
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 6, vertical: 1),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF234E3F)
-                                              .withValues(alpha: 0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                        child: const Text(
-                                          'Tú',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF234E3F),
-                                          ),
-                                        ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                                Flexible(
+                                  child: Text(
+                                    c.autorNombre,
+                                    key: Key('autor_comentario_${c.id}'),
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: autorColor,
+                                    ),
+                                  ),
+                                ),
+                                if (esMio) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 1.5),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.verdeOliva
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'Tú',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.verdeOliva,
                                       ),
-                                    ],
-                                  ],
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(width: 8),
+                                Text(
+                                  _formatearFechaHora(c.creadoEn),
+                                  key: Key('fecha_comentario_${c.id}'),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.black45,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _formatearFechaHora(c.creadoEn),
-                                key: Key('fecha_comentario_${c.id}'),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.black45,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          // Burbuja del comentario
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: esMio
-                                    ? const Color(0xFF234E3F).withValues(alpha: 0.3)
-                                    : const Color(0xFFE8E4DA),
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x08000000),
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
+                                if (esMio) ...[
+                                  const SizedBox(width: 6),
+                                  CircleAvatar(
+                                    radius: 11,
+                                    backgroundColor: AppColors.verdeOliva,
+                                    child: Text(
+                                      iniciales,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
-                            child: Text(
-                              c.texto,
-                              key: Key('texto_comentario_${c.id}'),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF2C3E35),
-                                height: 1.3,
+                          ),
+                          const SizedBox(height: 5),
+
+                          // Burbuja del comentario tipo chat
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.of(context).size.width * 0.82,
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: esMio
+                                    ? const Color(0xFFE9EFE6)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: const Radius.circular(16),
+                                  topRight: const Radius.circular(16),
+                                  bottomLeft: esMio
+                                      ? const Radius.circular(16)
+                                      : const Radius.circular(4),
+                                  bottomRight: esMio
+                                      ? const Radius.circular(4)
+                                      : const Radius.circular(16),
+                                ),
+                                border: Border.all(
+                                  color: esMio
+                                      ? AppColors.verdeOliva.withValues(alpha: 0.35)
+                                      : AppColors.borde,
+                                  width: 1.2,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x08000000),
+                                    blurRadius: 6,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                c.texto,
+                                key: Key('texto_comentario_${c.id}'),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppColors.textoPrincipal,
+                                  height: 1.35,
+                                ),
                               ),
                             ),
                           ),
@@ -498,7 +576,7 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                     IconButton.filled(
                       key: const Key('boton_enviar_comentario'),
                       style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF234E3F),
+                        backgroundColor: AppColors.verdeOliva,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
