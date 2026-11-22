@@ -54,7 +54,7 @@ class ProgresoComprasBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   completado
-                      ? '¡Todo comprado! La despensa está lista 🎉'
+                      ? 'Todo comprado. La despensa está lista.'
                       : 'Progreso de compras: $comprados de $total listos',
                   style: TextStyle(
                     fontSize: 13,
@@ -270,6 +270,23 @@ class ProductoCard extends StatelessWidget {
                             : TextDecoration.none,
                       ),
                     ),
+                    if (producto.descripcion != null &&
+                        producto.descripcion!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        producto.descripcion!.trim(),
+                        key: Key('descripcion_${producto.id}'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: esComprado
+                              ? Colors.black38
+                              : AppColors.textoSecundario,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                     if (producto.cantidad > 0 || producto.costo != null) ...[
                       const SizedBox(height: 3),
                       Row(

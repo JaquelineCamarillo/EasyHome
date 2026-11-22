@@ -8,6 +8,7 @@ import '../services/hogar_service.dart';
 import '../services/usuario_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_feedback.dart';
+import '../widgets/usuario_avatar.dart';
 
 /// Pantalla #7 — Perfil del hogar: integrantes y código de invitación,
 /// escuchando Firestore en tiempo real.
@@ -39,6 +40,7 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
   Stream<List<Integrante>>? _integrantesStream;
   String? _error;
   String? _hogarIdResuelto;
+  List<Hogar> _misHogares = [];
 
   @override
   void initState() {
@@ -51,7 +53,7 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
       final hogarId = widget.hogarId ?? await _hogares.obtenerHogarIdActual();
       if (!mounted) return;
       if (hogarId == null) {
-        setState(() => _error = 'Todavía no perteneces a ningún hogar');
+        setState(() => _error = 'Todavía no perteneces a ningún espacio');
         return;
       }
       _hogarIdResuelto = hogarId;
@@ -64,11 +66,164 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
         _hogarStream = _hogares.observarHogar(hogarId);
         _integrantesStream = _hogares.observarIntegrantes(hogarId);
       });
+      // Cargar lista de todos los hogares del usuario en segundo plano (para selector multi-hogar)
+      _hogares.obtenerHogaresDelUsuario().then((lista) {
+        if (mounted) {
+          setState(() => _misHogares = lista);
+        }
+      }).catchError((_) {});
     } on HogarException catch (e) {
       if (mounted) setState(() => _error = e.mensaje);
     } catch (_) {
       if (mounted) setState(() => _error = HogarService.msgSinConexion);
     }
+  }
+
+  Future<void> _cambiarHogarSeleccionado(String nuevoHogarId) async {
+    if (nuevoHogarId == _hogarIdResuelto) return;
+    try {
+      await _hogares.cambiarHogarActivo(nuevoHogarId);
+      if (!mounted) return;
+      setState(() {
+        _hogarIdResuelto = nuevoHogarId;
+        _hogarStream = _hogares.observarHogar(nuevoHogarId);
+        _integrantesStream = _hogares.observarIntegrantes(nuevoHogarId);
+      });
+      AppFeedback.mostrarExito(context, 'Cambiaste de espacio activo');
+    } catch (_) {
+      if (!mounted) return;
+      AppFeedback.mostrarError(context, 'No se pudo cambiar de espacio');
+    }
+  }
+
+  Future<void> _mostrarSelectorMultihogar(Hogar hogarActual) async {
+    try {
+      final lista = await _hogares.obtenerHogaresDelUsuario();
+      if (mounted) {
+        setState(() => _misHogares = lista);
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    final hogares = _misHogares.isNotEmpty ? _misHogares : [hogarActual];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: Material(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.black12,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const Row(
+                    children: [
+                      Icon(Icons.workspaces_rounded, color: Color(0xFF234E3F)),
+                      SizedBox(width: 8),
+                      Text(
+                        'Mis espacios',
+                        key: Key('titulo_selector_hogares'),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E2D27),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ...hogares.map((h) {
+                    final esActual = h.id == _hogarIdResuelto;
+                    return ListTile(
+                      key: Key('item_hogar_${h.id}'),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      leading: CircleAvatar(
+                        backgroundColor: esActual
+                            ? AppColors.verdeOliva
+                            : const Color(0xFFE8E4DA),
+                        foregroundColor:
+                            esActual ? Colors.white : const Color(0xFF1E2D27),
+                        child: const Icon(Icons.home_work_outlined, size: 20),
+                      ),
+                      title: Text(
+                        h.nombre,
+                        style: TextStyle(
+                          fontWeight:
+                              esActual ? FontWeight.bold : FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        TipoEspacio.etiquetaDe(h.tipoEspacio),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: esActual
+                          ? const Icon(Icons.check_circle_rounded,
+                              color: AppColors.verdeOliva)
+                          : const Icon(Icons.swap_horiz_rounded,
+                              color: Colors.black45),
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        _cambiarHogarSeleccionado(h.id);
+                      },
+                    );
+                  }),
+                  const Divider(height: 24),
+                  FilledButton.icon(
+                    key: const Key('boton_crear_nuevo_hogar_admin'),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Crear espacio'),
+                    onPressed: () async {
+                      final nav = Navigator.of(context);
+                      Navigator.of(ctx).pop();
+                      await nav.pushNamed(AppRoutes.hogar);
+                      if (mounted) {
+                        await _iniciar();
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    key: const Key('boton_unirse_otro_hogar_admin'),
+                    icon: const Icon(Icons.key_rounded),
+                    label: const Text('Unirme a otro espacio con código'),
+                    onPressed: () async {
+                      final nav = Navigator.of(context);
+                      Navigator.of(ctx).pop();
+                      await nav.pushNamed(AppRoutes.unirseHogar);
+                      if (mounted) {
+                        await _iniciar();
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _copiarCodigo(String codigo) async {
@@ -181,14 +336,14 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
             Icon(Icons.exit_to_app_rounded, color: AppColors.error),
             SizedBox(width: 8),
             Text(
-              'Salir del hogar',
+              'Salir del espacio',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ],
         ),
         content: const Text(
-          '¿Estás seguro de que deseas salir de este hogar? '
-          'Podrás unirte al hogar correcto ingresando su código de invitación.',
+          '¿Estás seguro de que deseas salir de este espacio? '
+          'Podrás unirte al espacio correcto ingresando su código de invitación.',
           style: TextStyle(fontSize: 14),
         ),
         actions: [
@@ -199,7 +354,7 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Salir del hogar'),
+            child: const Text('Salir del espacio'),
           ),
         ],
       ),
@@ -215,7 +370,7 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
         );
       } catch (_) {
         if (!mounted) return;
-        AppFeedback.mostrarError(context, 'No se pudo salir del hogar');
+        AppFeedback.mostrarError(context, 'No se pudo salir del espacio');
       }
     }
   }
@@ -264,13 +419,13 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
     return StreamBuilder<Hogar?>(
       stream: hogarStream,
       builder: (context, snap) {
-        if (snap.hasError) return const _Mensaje('No se pudo cargar el hogar');
+        if (snap.hasError) return const _Mensaje('No se pudo cargar el espacio');
         if (!snap.hasData && snap.connectionState != ConnectionState.active) {
           return const Center(child: CircularProgressIndicator());
         }
         final hogar = snap.data;
         if (hogar == null) {
-          return const _Mensaje('No se encontró tu hogar');
+          return const _Mensaje('No se encontró tu espacio');
         }
 
         final tema = Theme.of(context);
@@ -278,16 +433,60 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  hogar.nombre,
-                  key: const Key('nombre_hogar'),
-                  style: tema.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: tema.colorScheme.primary,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          hogar.nombre,
+                          key: const Key('nombre_hogar'),
+                          style: tema.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: tema.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          key: const Key('badge_tipo_espacio'),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.verdeOliva.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            TipoEspacio.etiquetaDe(hogar.tipoEspacio),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.verdeOliva,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  OutlinedButton.icon(
+                    key: const Key('boton_gestionar_hogares'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.workspaces_outline, size: 18),
+                    label: Text(
+                      _misHogares.length > 1
+                          ? 'Espacios (${_misHogares.length})'
+                          : 'Espacios',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    onPressed: () => _mostrarSelectorMultihogar(hogar),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -310,7 +509,7 @@ class _PerfilHogarScreenState extends State<PerfilHogarScreen> {
                   foregroundColor: AppColors.error,
                 ),
                 icon: const Icon(Icons.exit_to_app_rounded, size: 18),
-                label: const Text('Salir de este hogar'),
+                label: const Text('Salir de este espacio'),
                 onPressed: _confirmarSalirHogar,
               ),
             ),
@@ -430,7 +629,7 @@ class _IntegranteTile extends StatelessWidget {
           ],
         ),
         content: Text(
-          '¿Estás seguro de que deseas expulsar a ${integrante.nombre} de este hogar?',
+          '¿Estás seguro de que deseas expulsar a ${integrante.nombre} de este espacio?',
           style: const TextStyle(fontSize: 14),
         ),
         actions: [
@@ -453,7 +652,7 @@ class _IntegranteTile extends StatelessWidget {
         if (!context.mounted) return;
         AppFeedback.mostrarInfo(
           context,
-          '${integrante.nombre} fue removido del hogar',
+          '${integrante.nombre} fue removido del espacio',
         );
       } catch (_) {
         if (!context.mounted) return;
@@ -582,17 +781,10 @@ class _IntegranteTile extends StatelessWidget {
             ),
             Row(
               children: [
-                CircleAvatar(
+                UsuarioAvatar(
+                  nombre: integrante.nombre,
+                  avatarRaw: integrante.avatarColor,
                   radius: 28,
-                  backgroundColor: avatarColor,
-                  foregroundColor: Colors.white,
-                  child: Text(
-                    inicial,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -663,7 +855,7 @@ class _IntegranteTile extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               integrante.esAdministrador
-                                  ? 'Administrador del hogar'
+                                  ? 'Administrador del espacio'
                                   : 'Integrante',
                               style: TextStyle(
                                 fontSize: 11,
@@ -815,12 +1007,9 @@ class _IntegranteTile extends StatelessWidget {
         ? (integrante.correo ?? usuarioService?.usuarioActual?.email)
         : integrante.correo;
 
-    Color avatarColor = tema.colorScheme.primary;
-    if (integrante.avatarColor != null) {
-      try {
-        avatarColor = Color(int.parse(integrante.avatarColor!));
-      } catch (_) {}
-    }
+    final avatarColor = integrante.avatarColor != null
+        ? AvatarConfig.parse(integrante.avatarColor).colorFondo
+        : tema.colorScheme.primary;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -847,13 +1036,10 @@ class _IntegranteTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: avatarColor,
-                  foregroundColor: Colors.white,
-                  child: Text(
-                    inicial,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                UsuarioAvatar(
+                  nombre: integrante.nombre,
+                  avatarRaw: integrante.avatarColor,
+                  radius: 20,
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -982,7 +1168,7 @@ class _IntegranteTile extends StatelessWidget {
                                 size: 20, color: Color(0xFFC24134)),
                             SizedBox(width: 10),
                             Text(
-                              'Remover del hogar',
+                              'Remover del espacio',
                               style: TextStyle(
                                   fontSize: 13, color: Color(0xFFC24134)),
                             ),
@@ -1038,7 +1224,7 @@ class _CodigoInvitacionBox extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Código de invitación del hogar',
+                  'Código de invitación del espacio',
                   style: TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 const SizedBox(height: 4),

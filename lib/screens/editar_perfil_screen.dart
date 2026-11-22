@@ -5,6 +5,7 @@ import '../routes.dart';
 import '../services/usuario_service.dart';
 import '../utils/app_feedback.dart';
 import '../utils/validators.dart';
+import '../widgets/usuario_avatar.dart';
 
 /// Pantalla para ver y editar el perfil personal del usuario.
 class EditarPerfilScreen extends StatefulWidget {
@@ -30,18 +31,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
 
   Stream<Usuario?>? _perfilStream;
   Usuario? _usuarioActual;
-  String? _colorSeleccionado;
+  AvatarConfig? _avatarConfig;
   bool _cargando = false;
-
-  static const List<String> _paletaColores = [
-    '0xFF787F5D', // Verde Oliva EasyHome
-    '0xFFA68568', // Bronce Mocha EasyHome
-    '0xFFAABACA', // Azul Pizarra EasyHome
-    '0xFFBEA489', // Arena Taupe EasyHome
-    '0xFF2E6B56', // Salvia
-    '0xFF2C3E50', // Azul marino
-    '0xFFC24134', // Carmesí suave
-  ];
 
   @override
   void initState() {
@@ -58,7 +49,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     if (_nombreCtrl.text.isEmpty) {
       _nombreCtrl.text = user.nombre;
     }
-    _colorSeleccionado ??= user.avatarColor ?? _paletaColores.first;
+    _avatarConfig ??= AvatarConfig.parse(user.avatarColor);
   }
 
   @override
@@ -87,16 +78,256 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
     }
   }
 
-  Future<void> _seleccionarColor(String colorHex) async {
-    setState(() => _colorSeleccionado = colorHex);
+  Future<void> _guardarAvatarConfig(
+    AvatarConfig nuevoConfig, {
+    String mensaje = 'Color de perfil guardado',
+  }) async {
+    setState(() => _avatarConfig = nuevoConfig);
     try {
-      await _usuarios.actualizarAvatarColor(colorHex);
+      await _usuarios.actualizarAvatarColor(nuevoConfig.serialize());
       if (!mounted) return;
-      AppFeedback.mostrarExito(context, 'Color de perfil guardado');
+      AppFeedback.mostrarExito(context, mensaje);
     } catch (_) {
       if (!mounted) return;
       AppFeedback.mostrarError(context, UsuarioService.msgErrorActualizar);
     }
+  }
+
+  Future<void> _seleccionarColor(String colorHex) async {
+    final actual = _avatarConfig ?? const AvatarConfig();
+    await _guardarAvatarConfig(
+      actual.copyWith(colorHex: colorHex),
+      mensaje: 'Color de perfil guardado',
+    );
+  }
+
+  Future<void> _abrirCreadorPersonaje(Usuario user) async {
+    AvatarConfig temporal = (_avatarConfig ?? const AvatarConfig())
+        .copyWith(usarPersonaje: true);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Material(
+                color: Colors.white,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+                clipBehavior: Clip.antiAlias,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.black12,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        'Personaliza tu personaje',
+                        key: Key('titulo_creador_personaje'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: UsuarioAvatar(
+                          nombre: user.nombre,
+                          config: temporal,
+                          radius: 50,
+                          mostrarSombra: true,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Tono de piel',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 10,
+                        children: List.generate(AvatarConfig.tonosPiel.length,
+                            (i) {
+                          final sel = temporal.tonoPiel == i;
+                          return InkWell(
+                            key: Key('piel_$i'),
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => setModalState(
+                                () => temporal = temporal.copyWith(tonoPiel: i)),
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: AvatarConfig.tonosPiel[i],
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: sel ? Colors.black87 : Colors.black12,
+                                  width: sel ? 2.5 : 1,
+                                ),
+                              ),
+                              child: sel
+                                  ? const Icon(Icons.check,
+                                      size: 16, color: Colors.black87)
+                                  : null,
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Estilo de cabello',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: List.generate(AvatarConfig.estilosPelo.length,
+                            (i) {
+                          return ChoiceChip(
+                            key: Key('pelo_$i'),
+                            label: Text(AvatarConfig.estilosPelo[i]),
+                            selected: temporal.estiloPelo == i,
+                            onSelected: (_) => setModalState(() =>
+                                temporal = temporal.copyWith(estiloPelo: i)),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Color de cabello',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 10,
+                        children: List.generate(AvatarConfig.coloresPelo.length,
+                            (i) {
+                          final sel = temporal.colorPelo == i;
+                          return InkWell(
+                            key: Key('cpelo_$i'),
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => setModalState(() =>
+                                temporal = temporal.copyWith(colorPelo: i)),
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: AvatarConfig.coloresPelo[i],
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: sel ? Colors.black87 : Colors.black12,
+                                  width: sel ? 2.5 : 1,
+                                ),
+                              ),
+                              child: sel
+                                  ? const Icon(Icons.check,
+                                      size: 16, color: Colors.white)
+                                  : null,
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Accesorios',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children:
+                            List.generate(AvatarConfig.accesorios.length, (i) {
+                          return ChoiceChip(
+                            key: Key('acc_$i'),
+                            label: Text(AvatarConfig.accesorios[i]),
+                            selected: temporal.accesorio == i,
+                            onSelected: (_) => setModalState(() =>
+                                temporal = temporal.copyWith(accesorio: i)),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Expresión',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: List.generate(AvatarConfig.expresiones.length,
+                            (i) {
+                          return ChoiceChip(
+                            key: Key('exp_$i'),
+                            label: Text(AvatarConfig.expresiones[i]),
+                            selected: temporal.expresion == i,
+                            onSelected: (_) => setModalState(() =>
+                                temporal = temporal.copyWith(expresion: i)),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                Navigator.of(ctx).pop();
+                                _guardarAvatarConfig(
+                                  temporal.copyWith(usarPersonaje: false),
+                                  mensaje: 'Se restauró tu inicial',
+                                );
+                              },
+                              child: const Text('Usar inicial'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              key: const Key('boton_guardar_personaje'),
+                              onPressed: () {
+                                Navigator.of(ctx).pop();
+                                _guardarAvatarConfig(
+                                  temporal.copyWith(usarPersonaje: true),
+                                  mensaje: 'Personaje guardado',
+                                );
+                              },
+                              child: const Text('Guardar personaje'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _mostrarModalCambiarContrasena() async {
@@ -255,14 +486,14 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
             Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
             SizedBox(width: 8),
             Text(
-              'Salir del hogar',
+              'Salir del espacio',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ],
         ),
         content: const Text(
-          '¿Estás seguro de que deseas desvincularte de este hogar? '
-          'Perderás acceso a la lista de compras compartida hasta que te unas nuevamente con un código o crees otro hogar.',
+          '¿Estás seguro de que deseas desvincularte de este espacio? '
+          'Perderás acceso a la lista de compras compartida hasta que te unas nuevamente con un código o crees otro espacio.',
           style: TextStyle(fontSize: 14),
         ),
         actions: [
@@ -273,7 +504,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: const Color(0xFFC24134)),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sí, salir del hogar'),
+            child: const Text('Sí, salir del espacio'),
           ),
         ],
       ),
@@ -283,7 +514,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
       try {
         await _usuarios.salirDelHogar();
         if (!mounted) return;
-        AppFeedback.mostrarInfo(context, 'Has salido del hogar');
+        AppFeedback.mostrarInfo(context, 'Has salido del espacio');
         Navigator.of(context).pushNamedAndRemoveUntil(
           AppRoutes.hogar,
           (_) => false,
@@ -336,8 +567,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
 
   Widget _construirCuerpo(BuildContext context, Usuario user) {
     final tema = Theme.of(context);
-    final colorFondo = Color(int.parse(_colorSeleccionado ?? _paletaColores.first));
-    final inicial = user.nombre.isNotEmpty ? user.nombre[0].toUpperCase() : 'U';
+    final cfg = _avatarConfig ?? AvatarConfig.parse(user.avatarColor);
 
     return Scaffold(
       appBar: AppBar(
@@ -359,30 +589,11 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                   child: Stack(
                     alignment: Alignment.bottomRight,
                     children: [
-                      Container(
-                        width: 90,
-                        height: 90,
-                        decoration: BoxDecoration(
-                          color: colorFondo,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: colorFondo.withValues(alpha: 0.35),
-                              blurRadius: 18,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            inicial,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 38,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
+                      UsuarioAvatar(
+                        nombre: user.nombre,
+                        config: cfg,
+                        radius: 46,
+                        mostrarSombra: true,
                       ),
                       Container(
                         padding: const EdgeInsets.all(4),
@@ -434,8 +645,8 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                         const SizedBox(width: 6),
                         Text(
                           user.esAdministrador
-                              ? 'Administrador del hogar'
-                              : 'Integrante del hogar',
+                              ? 'Administrador del espacio'
+                              : 'Integrante del espacio',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -505,45 +716,64 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
-                          'Color de tu avatar',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Color',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            TextButton.icon(
+                              key: const Key('boton_crear_personaje'),
+                              icon: const Icon(Icons.face_retouching_natural_rounded, size: 18),
+                              label: Text(cfg.usarPersonaje
+                                  ? 'Editar personaje'
+                                  : 'Crear personaje'),
+                              onPressed: () => _abrirCreadorPersonaje(user),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         Wrap(
                           spacing: 10,
                           runSpacing: 10,
-                          children: _paletaColores.map((hex) {
+                          children: AvatarConfig.paletaColores.map((entry) {
+                            final hex = entry.key;
+                            final nombreColor = entry.value;
                             final colorItem = Color(int.parse(hex));
-                            final esSeleccionado = _colorSeleccionado == hex;
+                            final esSeleccionado = cfg.colorHex == hex;
 
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () => _seleccionarColor(hex),
-                              child: Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: colorItem,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: esSeleccionado
-                                        ? Colors.black87
-                                        : Colors.transparent,
-                                    width: 2.5,
+                            return Tooltip(
+                              message: nombreColor,
+                              child: InkWell(
+                                key: Key('color_perfil_$hex'),
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: () => _seleccionarColor(hex),
+                                child: Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: colorItem,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: esSeleccionado
+                                          ? Colors.black87
+                                          : Colors.transparent,
+                                      width: 2.5,
+                                    ),
                                   ),
+                                  child: esSeleccionado
+                                      ? const Icon(
+                                          Icons.check,
+                                          size: 18,
+                                          color: Colors.white,
+                                        )
+                                      : null,
                                 ),
-                                child: esSeleccionado
-                                    ? const Icon(
-                                        Icons.check,
-                                        size: 18,
-                                        color: Colors.white,
-                                      )
-                                    : null,
                               ),
                             );
                           }).toList(),
@@ -596,7 +826,7 @@ class _EditarPerfilScreenState extends State<EditarPerfilScreen> {
                             ),
                           ),
                           icon: const Icon(Icons.exit_to_app_rounded),
-                          label: const Text('Salir de este hogar'),
+                          label: const Text('Salir de este espacio'),
                           onPressed: _confirmarSalirHogar,
                         ),
                       ],

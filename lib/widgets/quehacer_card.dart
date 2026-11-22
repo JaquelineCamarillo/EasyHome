@@ -31,12 +31,40 @@ class QuehacerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final q = quehacer;
 
+    Color colorPrioridad;
+    Color fondoPrioridad;
+    switch (q.prioridad) {
+      case PrioridadQuehacer.alta:
+        colorPrioridad = const Color(0xFFC24134);
+        fondoPrioridad = const Color(0xFFFDE8E6);
+        break;
+      case PrioridadQuehacer.baja:
+        colorPrioridad = const Color(0xFF385266);
+        fondoPrioridad = AppColors.azulPizarra.withValues(alpha: 0.22);
+        break;
+      default:
+        colorPrioridad = AppColors.bronceMocha;
+        fondoPrioridad = AppColors.arenaTaupe.withValues(alpha: 0.22);
+    }
+
+    final ahora = DateTime.now();
+    final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+    final estaVencido = !q.hecho &&
+        q.fechaLimite != null &&
+        DateTime(q.fechaLimite!.year, q.fechaLimite!.month, q.fechaLimite!.day)
+            .isBefore(hoy);
+
     return Card(
       key: Key('item_quehacer_${q.id}'),
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: AppColors.borde, width: 1.2),
+        side: BorderSide(
+          color: estaVencido
+              ? const Color(0xFFC24134).withValues(alpha: 0.5)
+              : AppColors.borde,
+          width: 1.2,
+        ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -113,6 +141,50 @@ class QuehacerCard extends StatelessWidget {
                             ],
                           ),
                         ),
+                        Container(
+                          key: Key('badge_prioridad_${q.id}'),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: fondoPrioridad,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 4,
+                            children: [
+                              Icon(
+                                Icons.flag_rounded,
+                                size: 13,
+                                color: colorPrioridad,
+                              ),
+                              Text(
+                                PrioridadQuehacer.etiquetas[q.prioridad] ?? 'Media',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorPrioridad,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (q.categoria != CategoriaQuehacer.general)
+                          Container(
+                            key: Key('badge_categoria_${q.id}'),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.verdeOliva.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              CategoriaQuehacer.etiquetaDe(q.categoria),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.verdeOliva,
+                              ),
+                            ),
+                          ),
                         if (q.recurrente)
                           Container(
                             key: Key('badge_recurrente_${q.id}'),
@@ -149,6 +221,22 @@ class QuehacerCard extends StatelessWidget {
                           ),
                       ],
                     ),
+                    if (q.descripcion != null &&
+                        q.descripcion!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        q.descripcion!.trim(),
+                        key: Key('descripcion_quehacer_${q.id}'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: q.hecho
+                              ? Colors.black38
+                              : AppColors.textoSecundario,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 16,
@@ -180,17 +268,26 @@ class QuehacerCard extends StatelessWidget {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             spacing: 4,
                             children: [
-                              const Icon(
-                                Icons.calendar_today_outlined,
+                              Icon(
+                                estaVencido
+                                    ? Icons.event_busy_rounded
+                                    : Icons.calendar_today_outlined,
                                 size: 14,
-                                color: Colors.black54,
+                                color: estaVencido
+                                    ? const Color(0xFFC24134)
+                                    : Colors.black54,
                               ),
                               Text(
                                 '${q.fechaLimite!.day.toString().padLeft(2, '0')}/${q.fechaLimite!.month.toString().padLeft(2, '0')}/${q.fechaLimite!.year}',
                                 key: Key('fecha_quehacer_${q.id}'),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: Colors.black87,
+                                  fontWeight: estaVencido
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: estaVencido
+                                      ? const Color(0xFFC24134)
+                                      : Colors.black87,
                                 ),
                               ),
                             ],

@@ -206,15 +206,38 @@ class UsuarioService {
   }
 
   /// El usuario actual se sale voluntariamente de su hogar actual.
+  /// Si tiene otros hogares en su lista (`hogaresIds`), cambia automáticamente al siguiente.
   Future<void> salirDelHogar() async {
     final user = _auth.currentUser;
     if (user == null) throw const UsuarioException(msgSesionExpirada);
 
     try {
-      await _db.collection('usuarios').doc(user.uid).update({
-        'hogarId': null,
-        'esAdministrador': false,
-      });
+      final docRef = _db.collection('usuarios').doc(user.uid);
+      final snap = await docRef.get();
+      final data = snap.data() ?? <String, dynamic>{};
+      final actualHogarId = data['hogarId'] as String?;
+      final rawHogares = data['hogaresIds'];
+      final List<String> restantes = rawHogares is List
+          ? rawHogares
+              .map((e) => e.toString())
+              .where((e) => e.isNotEmpty && e != actualHogarId)
+              .toList()
+          : <String>[];
+
+      final siguienteHogar = restantes.isNotEmpty ? restantes.first : null;
+      try {
+        await docRef.update({
+          'hogarId': siguienteHogar,
+          'hogaresIds': restantes,
+          'esAdministrador':
+              siguienteHogar != null ? (data['esAdministrador'] == true) : false,
+        });
+      } on FirebaseException {
+        await docRef.update({
+          'hogarId': null,
+          'esAdministrador': false,
+        });
+      }
     } on FirebaseException catch (e) {
       debugPrint('Firestore error al salir del hogar: ${e.code}');
       throw const UsuarioException(msgSinConexion);

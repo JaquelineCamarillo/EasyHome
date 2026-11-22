@@ -71,18 +71,21 @@ class ComprasService {
     }
   }
 
-  /// Actualiza el nombre, cantidad y costo opcional de un producto (#12 y #Requerimiento 2 Retro).
+  /// Actualiza el nombre, cantidad, costo opcional y descripción de un producto (#12 y #Requerimiento 2 Retro).
   Future<void> editarProducto({
     required String productoId,
     required String nombre,
     required int cantidad,
     double? costo,
+    String? descripcion,
   }) async {
     try {
+      final descLimpia = (descripcion ?? '').trim();
       final Map<String, dynamic> datos = {
         'nombre': nombre.trim(),
         'cantidad': cantidad,
         'costo': costo,
+        'descripcion': descLimpia.isEmpty ? null : descLimpia,
       };
       await _db.collection('productos').doc(productoId).update(datos);
     } on FirebaseException catch (e) {
@@ -97,8 +100,10 @@ class ComprasService {
     required String nombre,
     required int cantidad,
     double? costo,
+    String? descripcion,
   }) async {
     try {
+      final descLimpia = (descripcion ?? '').trim();
       final Map<String, dynamic> datos = {
         'hogarId': hogarId,
         'nombre': nombre.trim(),
@@ -109,6 +114,9 @@ class ComprasService {
       };
       if (costo != null) {
         datos['costo'] = costo;
+      }
+      if (descLimpia.isNotEmpty) {
+        datos['descripcion'] = descLimpia;
       }
       final docRef = await _db.collection('productos').add(datos);
       return docRef.id;

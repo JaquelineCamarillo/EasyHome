@@ -47,8 +47,11 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
     try {
       await _hogares.unirseAHogar(codigo: _codigoCtrl.text);
       if (!mounted) return;
-      // Unido con éxito: directo al dashboard.
-      Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+      // Unido con éxito: directo al dashboard limpio.
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.dashboard,
+        (_) => false,
+      );
     } on HogarException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -95,7 +98,7 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Únete a un hogar',
+                    'Únete a un espacio',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w900,
@@ -105,7 +108,7 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Pídele el código de 6 caracteres a quien creó el hogar',
+                    'Pídele el código de 6 caracteres a quien creó el espacio',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textoSecundario,
@@ -204,7 +207,7 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Unirse al hogar'),
+                              : const Text('Unirse al espacio'),
                         ),
                       ],
                     ),
@@ -222,7 +225,7 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
                         key: const Key('enlace_crear_hogar'),
                         onTap: _irACrearHogar,
                         child: Text(
-                          'Crea tu hogar',
+                          'Crea tu espacio',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: tema.colorScheme.primary,

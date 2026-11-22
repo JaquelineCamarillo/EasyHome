@@ -162,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Organiza tu hogar, comparte la carga.',
+                    'Organiza tu espacio, comparte la carga.',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textoSecundario,

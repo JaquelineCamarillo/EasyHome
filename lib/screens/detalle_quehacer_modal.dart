@@ -238,6 +238,63 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                               ],
                             ),
                           ),
+                          // Prioridad
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: q.prioridad == PrioridadQuehacer.alta
+                                  ? const Color(0xFFFDE8E6)
+                                  : q.prioridad == PrioridadQuehacer.baja
+                                      ? AppColors.azulPizarra.withValues(alpha: 0.22)
+                                      : AppColors.arenaTaupe.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.flag_rounded,
+                                  size: 13,
+                                  color: q.prioridad == PrioridadQuehacer.alta
+                                      ? const Color(0xFFC24134)
+                                      : q.prioridad == PrioridadQuehacer.baja
+                                          ? const Color(0xFF385266)
+                                          : AppColors.bronceMocha,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Prioridad ${PrioridadQuehacer.etiquetas[q.prioridad] ?? 'Media'}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: q.prioridad == PrioridadQuehacer.alta
+                                        ? const Color(0xFFC24134)
+                                        : q.prioridad == PrioridadQuehacer.baja
+                                            ? const Color(0xFF385266)
+                                            : AppColors.bronceMocha,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Categoría
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.verdeOliva.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              CategoriaQuehacer.etiquetaDe(q.categoria),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.verdeOliva,
+                              ),
+                            ),
+                          ),
                           // Recurrente
                           if (q.recurrente)
                             Container(
@@ -292,6 +349,29 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                           ),
                         ],
                       ),
+                      if (q.descripcion != null &&
+                          q.descripcion!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE5E0D4)),
+                          ),
+                          child: Text(
+                            q.descripcion!.trim(),
+                            key: const Key('detalle_descripcion_quehacer'),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textoSecundario,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -341,7 +421,7 @@ class _DetalleQuehacerModalState extends State<DetalleQuehacerModal> {
                           ),
                           const SizedBox(height: 4),
                           const Text(
-                            'Escribe un aviso o aclaración para los demás integrantes del hogar.',
+                            'Escribe un aviso o aclaración para los demás integrantes del espacio.',
                             textAlign: TextAlign.center,
                             style: TextStyle(fontSize: 13, color: Colors.black45),
                           ),

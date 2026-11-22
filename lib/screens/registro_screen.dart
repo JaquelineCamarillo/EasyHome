@@ -133,7 +133,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Organiza compras y tareas en familia',
+                    'Organiza compras y tareas en tu espacio o equipo',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textoSecundario,

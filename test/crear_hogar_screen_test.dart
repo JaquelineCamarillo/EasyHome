@@ -16,7 +16,10 @@ class FakeHogarService extends HogarService {
   Completer<String>? espera;
 
   @override
-  Future<String> crearHogar({required String nombre}) async {
+  Future<String> crearHogar({
+    required String nombre,
+    String tipoEspacio = 'hogar',
+  }) async {
     llamadas++;
     nombreRecibido = nombre;
     if (espera != null) return espera!.future;

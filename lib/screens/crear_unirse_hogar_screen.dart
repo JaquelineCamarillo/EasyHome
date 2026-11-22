@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/hogar.dart';
 import '../routes.dart';
 import '../services/hogar_service.dart';
 import '../theme/app_theme.dart';
@@ -19,6 +20,7 @@ class CrearUnirseHogarScreen extends StatefulWidget {
 
 class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
   final _nombreCtrl = TextEditingController();
+  String _tipoEspacio = TipoEspacio.hogar;
 
   late final HogarService _hogares = widget.hogarService ?? HogarService();
 
@@ -49,7 +51,10 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
     try {
       await _hogares.unirseAHogar(codigo: cod);
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.dashboard,
+        (_) => false,
+      );
     } on HogarException catch (e) {
       _mostrarError(e.mensaje);
     } catch (_) {
@@ -77,14 +82,14 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
           ),
           content: Text(
             'Ingresaste "$cod", que parece ser un código de invitación.\n\n'
-            '• Si alguien te dio este código para unirte a su hogar, selecciona "Unirme con código".\n\n'
-            '• Si este es el nombre de tu propio hogar nuevo, selecciona "Crear nuevo hogar".',
+            '• Si alguien te dio este código para unirte a su espacio, selecciona "Unirme con código".\n\n'
+            '• Si este es el nombre de tu propio espacio nuevo, selecciona "Crear nuevo espacio".',
             style: const TextStyle(fontSize: 14),
           ),
           actions: [
             OutlinedButton(
               onPressed: () => Navigator.of(ctx).pop('crear'),
-              child: const Text('Crear nuevo hogar'),
+              child: const Text('Crear nuevo espacio'),
             ),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -110,10 +115,16 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
     });
 
     try {
-      await _hogares.crearHogar(nombre: _nombreCtrl.text);
+      await _hogares.crearHogar(
+        nombre: _nombreCtrl.text,
+        tipoEspacio: _tipoEspacio,
+      );
       if (!mounted) return;
-      // Ya es administrador de su hogar: directo al dashboard.
-      Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+      // Ya es administrador de su espacio: directo al dashboard limpio.
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.dashboard,
+        (_) => false,
+      );
     } on HogarException catch (e) {
       _mostrarError(e.mensaje);
     } catch (_) {
@@ -148,7 +159,7 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Crea tu hogar',
+                    'Crear espacio',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w900,
@@ -158,7 +169,7 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Ponle un nombre para empezar a organizar compras y quehaceres',
+                    'Ponle un nombre y elige el tipo de espacio o equipo para empezar a organizar compras y tareas',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textoSecundario,
@@ -207,7 +218,7 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                               ),
                               SizedBox(height: 2),
                               Text(
-                                'Únete a un hogar existente aquí',
+                                'Únete a un espacio existente aquí',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textoSecundario,
@@ -261,8 +272,8 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                           textCapitalization: TextCapitalization.sentences,
                           textInputAction: TextInputAction.done,
                           decoration: InputDecoration(
-                            labelText: 'Nombre del hogar',
-                            hintText: 'Ej. Casa de los Pérez, Depa 402...',
+                            labelText: 'Nombre del espacio',
+                            hintText: 'Ej. Casa de los Pérez, Depa 402, Equipo Alfa...',
                             prefixIcon: Icon(
                               Icons.cottage_outlined,
                               color: tema.colorScheme.primary,
@@ -271,6 +282,33 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                           validator: Validators.nombreHogar,
                           onChanged: (_) => setState(() => _errorGeneral = null),
                           onFieldSubmitted: (_) => _crearHogar(),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          key: const Key('dropdown_tipo_espacio'),
+                          initialValue: _tipoEspacio,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: 'Tipo de espacio o equipo',
+                            prefixIcon: Icon(
+                              Icons.workspaces_outline,
+                              color: tema.colorScheme.primary,
+                            ),
+                          ),
+                          items: TipoEspacio.etiquetas.entries.map((e) {
+                            return DropdownMenuItem<String>(
+                              value: e.key,
+                              child: Text(
+                                e.value,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _tipoEspacio = val);
+                            }
+                          },
                         ),
                         if (_pareceCodigoInvitacion) ...[
                           Container(
@@ -309,7 +347,7 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 const Text(
-                                  'Si deseas unirte a un hogar con este código, presiona el botón abajo para no crear una casa duplicada.',
+                                  'Si deseas unirte a un espacio con este código, presiona el botón abajo para no crear un espacio duplicado.',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textoSecundario,
@@ -326,7 +364,7 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                                   icon: const Icon(Icons.group_add_rounded,
                                       size: 18),
                                   label: const Text(
-                                    'Unirme al hogar con este código',
+                                    'Unirme al espacio con este código',
                                     style:
                                         TextStyle(fontWeight: FontWeight.bold),
                                   ),
@@ -385,7 +423,7 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Crear hogar'),
+                              : const Text('Crear espacio'),
                         ),
                       ],
                     ),
@@ -404,7 +442,7 @@ class _CrearUnirseHogarScreenState extends State<CrearUnirseHogarScreen> {
                         onTap: () => Navigator.of(context)
                             .pushNamed(AppRoutes.unirseHogar),
                         child: Text(
-                          'Únete a un hogar',
+                          'Únete a un espacio',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: tema.colorScheme.primary,

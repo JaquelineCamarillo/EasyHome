@@ -79,7 +79,7 @@ void main() {
       expect(find.text('Mi Perfil'), findsOneWidget);
       expect(find.text('Carlos Mendoza'), findsOneWidget);
       expect(find.text('carlos@example.com'), findsOneWidget);
-      expect(find.text('Administrador del hogar'), findsOneWidget);
+      expect(find.text('Administrador del espacio'), findsOneWidget);
       expect(find.text('El correo no se puede modificar'), findsOneWidget);
     });
 
@@ -166,14 +166,14 @@ void main() {
       await tester.tap(botonSalir);
       await tester.pumpAndSettle();
 
-      expect(find.text('Salir del hogar'), findsOneWidget);
+      expect(find.text('Salir del espacio'), findsOneWidget);
       expect(
         find.textContaining('¿Estás seguro de que deseas desvincularte'),
         findsOneWidget,
       );
 
       // Confirmar
-      await tester.tap(find.text('Sí, salir del hogar'));
+      await tester.tap(find.text('Sí, salir del espacio'));
       await tester.pumpAndSettle();
 
       expect(fake.salioDelHogar, isTrue);
