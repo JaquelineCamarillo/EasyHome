@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/integrante.dart';
+import '../models/quehacer.dart';
 import '../services/hogar_service.dart';
 import '../services/quehaceres_service.dart';
 import '../services/usuario_service.dart';
@@ -42,10 +43,13 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final _tituloCtrl = TextEditingController();
+  final _descripcionCtrl = TextEditingController();
 
   String? _responsableSeleccionado;
   DateTime? _fechaSeleccionada;
   bool _recurrente = false;
+  String _prioridadSeleccionada = PrioridadQuehacer.media;
+  String _categoriaSeleccionada = CategoriaQuehacer.general;
   String? _hogarId;
   bool _esAdmin = false;
   bool _cargandoInicial = true;
@@ -61,6 +65,7 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
   @override
   void dispose() {
     _tituloCtrl.dispose();
+    _descripcionCtrl.dispose();
     super.dispose();
   }
 
@@ -120,7 +125,7 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     if (_hogarId == null || _hogarId!.isEmpty) {
-      AppFeedback.mostrarError(context, 'No se pudo identificar el hogar');
+      AppFeedback.mostrarError(context, 'No se pudo identificar el espacio');
       return;
     }
 
@@ -132,6 +137,7 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
     setState(() => _guardando = true);
 
     try {
+      final descTexto = _descripcionCtrl.text.trim();
       await _quehaceres.crearQuehacer(
         hogarId: _hogarId!,
         titulo: _tituloCtrl.text.trim(),
@@ -139,6 +145,9 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
         fechaLimite: _fechaSeleccionada,
         esAdmin: _esAdmin,
         recurrente: _recurrente,
+        descripcion: descTexto.isNotEmpty ? descTexto : null,
+        prioridad: _prioridadSeleccionada,
+        categoria: _categoriaSeleccionada,
       );
 
       if (!mounted) return;
@@ -166,7 +175,7 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
     // Regla de negocio estricta: Solo admin puede crear quehaceres
     if (!_esAdmin) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Agregar quehacer')),
+        appBar: AppBar(title: const Text('Agregar tarea')),
         body: const Center(
           child: Padding(
             padding: EdgeInsets.all(24),
@@ -191,9 +200,12 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
         _responsableSeleccionado = integrantes.first.uid;
       }
 
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -203,13 +215,82 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
                 controller: _tituloCtrl,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
-                  labelText: 'Título del quehacer',
-                  hintText: 'Ej. Limpiar el refrigerador',
+                  labelText: 'Título de la tarea o actividad',
+                  hintText: 'Ej. Revisar inventario, Preparar reporte, Limpiar área...',
                   prefixIcon: Icon(Icons.task_alt_rounded),
                 ),
                 validator: Validators.tituloQuehacer,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              TextFormField(
+                key: const Key('campo_descripcion_quehacer'),
+                controller: _descripcionCtrl,
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Descripción o instrucciones (opcional)',
+                  hintText: 'Detalles adicionales, pasos o notas para el responsable...',
+                  prefixIcon: Icon(Icons.notes_rounded),
+                ),
+                validator: Validators.descripcionQuehacer,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      key: const Key('dropdown_prioridad_quehacer'),
+                      initialValue: _prioridadSeleccionada,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Prioridad',
+                        prefixIcon: Icon(Icons.flag_outlined),
+                      ),
+                      items: PrioridadQuehacer.etiquetas.entries.map((e) {
+                        return DropdownMenuItem<String>(
+                          value: e.key,
+                          child: Text(
+                            e.value,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _prioridadSeleccionada = val);
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      key: const Key('dropdown_categoria_quehacer'),
+                      initialValue: _categoriaSeleccionada,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Categoría / Área',
+                        prefixIcon: Icon(Icons.category_outlined),
+                      ),
+                      items: CategoriaQuehacer.etiquetas.entries.map((e) {
+                        return DropdownMenuItem<String>(
+                          value: e.key,
+                          child: Text(
+                            e.value,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _categoriaSeleccionada = val);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 key: const Key('dropdown_integrantes_quehacer'),
                 initialValue: _responsableSeleccionado,
@@ -272,18 +353,28 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
                     ),
                     Wrap(
                       spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         if (_fechaSeleccionada != null)
-                          IconButton(
+                          TextButton(
                             key: const Key('boton_quitar_fecha'),
-                            tooltip: 'Quitar fecha',
-                            icon: const Icon(Icons.close_rounded,
-                                size: 20, color: Colors.redAccent),
                             onPressed: () {
                               setState(() {
                                 _fechaSeleccionada = null;
                               });
                             },
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF8A6B53),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                            ),
+                            child: const Text(
+                              'Quitar fecha',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
                         FilledButton.tonal(
                           key: const Key('boton_seleccionar_fecha'),
@@ -337,7 +428,7 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
                         ),
                       )
                     : const Text(
-                        'Crear quehacer',
+                        'Crear tarea',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -347,12 +438,14 @@ class _AgregarQuehacerScreenState extends State<AgregarQuehacerScreen> {
             ],
           ),
         ),
-      );
+      ),
+    ),
+  );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Agregar quehacer'),
+        title: const Text('Agregar tarea'),
       ),
       body: _integrantes.isNotEmpty || _hogarId == null
           ? contenidoFormulario(_integrantes)

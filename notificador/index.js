@@ -17,13 +17,13 @@ function inicializarFirebase() {
   const rutaFinal = rutaEnvKey || (fs.existsSync(rutaDefaultKey) ? rutaDefaultKey : null);
 
   if (!rutaFinal || !fs.existsSync(rutaFinal)) {
-    console.error('\n❌ ERROR: No se encontró la llave de cuenta de servicio para Firebase Admin.');
+    console.error('\nERROR: No se encontró la llave de cuenta de servicio para Firebase Admin.');
     console.error('Para correr el notificador local de EasyHome necesitas:');
     console.error('1. Ir a la Consola de Firebase: https://console.firebase.google.com/project/easyhome-6ef93/settings/serviceaccounts/adminsdk');
     console.error('2. Hacer clic en "Generar nueva clave privada" y descargar el archivo JSON.');
     console.error('3. Renombrarlo a "serviceAccountKey.json" y colocarlo en la carpeta "notificador/"');
     console.error('   (o definir la variable de entorno GOOGLE_APPLICATION_CREDENTIALS con la ruta al archivo).');
-    console.error('\n⚠️  IMPORTANTE: Este archivo contiene secretos y está ignorado en .gitignore. JAMÁS lo subas a GitHub.\n');
+    console.error('\nIMPORTANTE: Este archivo contiene secretos y está ignorado en .gitignore. JAMÁS lo subas a GitHub.\n');
     process.exit(1);
   }
 
@@ -33,7 +33,7 @@ function inicializarFirebase() {
     projectId: serviceAccount.project_id || 'easyhome-6ef93',
   });
 
-  console.log(`✅ Firebase Admin inicializado exitosamente con el proyecto: ${serviceAccount.project_id || 'easyhome-6ef93'}`);
+  console.log(`Firebase Admin inicializado exitosamente con el proyecto: ${serviceAccount.project_id || 'easyhome-6ef93'}`);
 }
 
 inicializarFirebase();
@@ -42,9 +42,9 @@ const db = admin.firestore();
 const horaArranque = new Date();
 const procesados = new Set();
 
-console.log(`🕒 Notificador arrancado a las ${horaArranque.toISOString()}`);
-console.log('📡 Escuchando colecciones "productos" y "quehaceres" en tiempo real...');
-console.log('💡 Presiona Ctrl+C para detener el proceso cuando termines las pruebas.\n');
+console.log(`Notificador arrancado a las ${horaArranque.toISOString()}`);
+console.log('Escuchando colecciones "productos" y "quehaceres" en tiempo real...');
+console.log('Presiona Ctrl+C para detener el proceso cuando termines las pruebas.\n');
 
 // 2. Escuchar colección "productos"
 let primeraCargaProductos = true;
@@ -54,7 +54,7 @@ const unsubProductos = db.collection('productos').onSnapshot(
       // Ignorar documentos existentes antes del arranque
       snapshot.docs.forEach((d) => procesados.add(`prod_${d.id}`));
       primeraCargaProductos = false;
-      console.log(`📦 Carga inicial de productos ignorada (${snapshot.size} productos existentes).`);
+      console.log(`Carga inicial de productos ignorada (${snapshot.size} productos existentes).`);
       return;
     }
 
@@ -83,7 +83,7 @@ const unsubProductos = db.collection('productos').onSnapshot(
     }
   },
   (error) => {
-    console.error('❌ Error en escucha de productos:', error.message);
+    console.error('Error en escucha de productos:', error.message);
   }
 );
 
@@ -94,7 +94,7 @@ const unsubQuehaceres = db.collection('quehaceres').onSnapshot(
     if (primeraCargaQuehaceres) {
       snapshot.docs.forEach((d) => procesados.add(`que_${d.id}`));
       primeraCargaQuehaceres = false;
-      console.log(`📋 Carga inicial de quehaceres ignorada (${snapshot.size} quehaceres existentes).`);
+      console.log(`Carga inicial de quehaceres ignorada (${snapshot.size} quehaceres existentes).`);
       return;
     }
 
@@ -117,7 +117,7 @@ const unsubQuehaceres = db.collection('quehaceres').onSnapshot(
     }
   },
   (error) => {
-    console.error('❌ Error en escucha de quehaceres:', error.message);
+    console.error('Error en escucha de quehaceres:', error.message);
   }
 );
 
@@ -167,7 +167,7 @@ async function manejarNuevoProducto(id, data) {
 
   const respuesta = await admin.messaging().sendEachForMulticast(mensaje);
   console.log(
-    `🔔 [Producto notificado] "${nombre}" por ${nombreAutor} -> Éxito: ${respuesta.successCount}, Fallos: ${respuesta.failureCount}`
+    `[Producto notificado] "${nombre}" por ${nombreAutor} -> Éxito: ${respuesta.successCount}, Fallos: ${respuesta.failureCount}`
   );
 
   if (respuesta.failureCount > 0) {
@@ -223,7 +223,7 @@ async function manejarNuevoQuehacer(id, data) {
 
   const respuesta = await admin.messaging().sendEachForMulticast(mensaje);
   console.log(
-    `🔔 [Quehacer notificado] "${titulo}" asignado a ${asignadoA} -> Éxito: ${respuesta.successCount}, Fallos: ${respuesta.failureCount}`
+    `[Quehacer notificado] "${titulo}" asignado a ${asignadoA} -> Éxito: ${respuesta.successCount}, Fallos: ${respuesta.failureCount}`
   );
 
   if (respuesta.failureCount > 0) {
@@ -233,12 +233,12 @@ async function manejarNuevoQuehacer(id, data) {
 
 // Cierre limpio al recibir señales del sistema
 function cerrar() {
-  console.log('\n🛑 Deteniendo notificador local de EasyHome...');
+  console.log('\nDeteniendo notificador local de EasyHome...');
   try {
     unsubProductos();
     unsubQuehaceres();
   } catch (_) {}
-  console.log('👋 Notificador detenido. ¡Hasta pronto!');
+  console.log('Notificador detenido. ¡Hasta pronto!');
   process.exit(0);
 }
 

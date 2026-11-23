@@ -26,6 +26,7 @@ class AgregarProductoScreen extends StatefulWidget {
 class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nombreCtrl = TextEditingController();
+  final _descripcionCtrl = TextEditingController();
   final _cantidadCtrl = TextEditingController(text: '1');
   final _costoCtrl = TextEditingController();
 
@@ -40,6 +41,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
   @override
   void dispose() {
     _nombreCtrl.dispose();
+    _descripcionCtrl.dispose();
     _cantidadCtrl.dispose();
     _costoCtrl.dispose();
     super.dispose();
@@ -58,6 +60,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
 
   void _limpiarFormulario() {
     _nombreCtrl.clear();
+    _descripcionCtrl.clear();
     _cantidadCtrl.text = '1';
     _costoCtrl.clear();
   }
@@ -81,7 +84,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
       if (hogarId == null) {
         if (!mounted) return;
         setState(() {
-          _errorGeneral = 'No se encontró el hogar actual';
+          _errorGeneral = 'No se encontró el espacio actual';
           _cargando = false;
         });
         return;
@@ -93,11 +96,14 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
         costoParsed = double.tryParse(costoTexto);
       }
 
+      final descTexto = _descripcionCtrl.text.trim();
+
       await _compras.agregarProducto(
         hogarId: hogarId,
         nombre: _nombreCtrl.text,
         cantidad: cantidadEntera,
         costo: costoParsed,
+        descripcion: descTexto.isNotEmpty ? descTexto : null,
       );
 
       if (!mounted) return;
@@ -217,6 +223,24 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                         ),
                       ),
                       validator: Validators.nombreProducto,
+                      onChanged: (_) => setState(() => _errorGeneral = null),
+                    ),
+                    const SizedBox(height: 18),
+                    TextFormField(
+                      key: const Key('campo_descripcion_producto'),
+                      controller: _descripcionCtrl,
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.next,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: 'Descripción o detalles (opcional)',
+                        hintText: 'Ej. Deslactosada 1L, marca específica, presentación...',
+                        prefixIcon: Icon(
+                          Icons.notes_rounded,
+                          color: tema.colorScheme.primary,
+                        ),
+                      ),
+                      validator: Validators.descripcionProducto,
                       onChanged: (_) => setState(() => _errorGeneral = null),
                     ),
                     const SizedBox(height: 18),

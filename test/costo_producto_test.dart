@@ -19,6 +19,7 @@ class FakeCostoComprasService extends ComprasService {
     required String nombre,
     required int cantidad,
     double? costo,
+    String? descripcion,
   }) async {
     ultimoHogarId = hogarId;
     ultimoNombre = nombre;

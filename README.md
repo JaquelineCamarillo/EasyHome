@@ -1,6 +1,6 @@
 # EasyHome
 
-App de hogar compartido que unifica **lista de compras** y **reparto de quehaceres**, dirigida a familias o roommates. Proyecto Integrador de la materia Desarrollo Móvil Integral (UTNG).
+App de espacios y hogares compartidos que unifica **lista de compras** (con descripción y costo estimado) y **gestión de quehaceres y tareas** (con prioridades, categorías/áreas, instrucciones detalladas, rotación semanal y comentarios), adaptable a familias, roommates, equipos de proyecto, oficinas y eventos. Proyecto Integrador de la materia Desarrollo Móvil Integral (UTNG).
 
 ## Equipo
 
@@ -35,7 +35,7 @@ Verifica que todo esté listo corriendo en una terminal:
 flutter doctor
 ```
 
-Resuelve cualquier ❌ o ⚠️ que marque antes de seguir (sobre todo las licencias de Android: `flutter doctor --android-licenses`).
+Resuelve cualquier error o advertencia que marque antes de seguir (sobre todo las licencias de Android: `flutter doctor --android-licenses`).
 
 ## Clonar el proyecto
 
@@ -78,7 +78,7 @@ Por directrices de seguridad y buenas prácticas de protección de credenciales 
    - Existe una plantilla de estructura en `android/app/google-services.json.example`.
    - Para compilar y ejecutar localmente, descarga el archivo legítimo desde Firebase Console:
      1. Entra a **Firebase Console** → Selecciona el proyecto del equipo.
-     2. Ve a ⚙️ **Configuración del proyecto** → Sección **Tus apps** → App Android (`com.example.easyhome`).
+     2. Ve a **Configuración del proyecto** -> Sección **Tus apps** -> App Android (`com.example.easyhome`).
      3. Descarga `google-services.json` y colócalo en:
         `android/app/google-services.json`
 
@@ -134,7 +134,7 @@ bitacora/                       # Documentos de arquitectura, seguridad y modelo
 
 ## Modelo de datos (Firestore)
 
-El modelo de datos (colecciones `hogares`, `usuarios`, `productos`, `quehaceres`) está documentado en `bitacora/modelo-datos-firestore.md`, junto con las reglas de seguridad propuestas.
+El modelo de datos (colecciones `hogares`, `usuarios`, `productos`, `quehaceres` y subcolección `comentarios`, incluyendo soporte multi-espacio `hogaresIds`, `tipoEspacio`, descripción de productos y prioridades/categorías de tareas) está documentado en `bitacora/modelo-datos-firestore.md`, junto con las reglas de seguridad en `firestore.rules`.
 
 La arquitectura general del proyecto (stack, estructura de carpetas, decisiones del equipo) está en `bitacora/arquitectura.md`.
 
@@ -142,7 +142,7 @@ La arquitectura general del proyecto (stack, estructura de carpetas, decisiones 
 
 El repositorio integra validaciones automáticas mediante GitHub Actions (`.github/workflows/security-ci.yml`):
 - **Análisis estático:** `flutter analyze` con 0 errores y 0 advertencias.
-- **Suite Flutter:** 153 pruebas unitarias y de widgets (`flutter test`).
+- **Suite Flutter:** 168+ pruebas unitarias y de widgets (`flutter test`).
 - **Suite Notificador FCM:** 17 pruebas con Jest (`cd notificador && npm test`).
 - **Gestión de dependencias:** Monitoreo semanal automatizado con `.github/dependabot.yml` y auditoría con `flutter pub outdated`.
 

@@ -11,6 +11,7 @@ class Producto {
     this.agregadoPor,
     this.fechaCreacion,
     this.costo,
+    this.descripcion,
   });
 
   final String id;
@@ -23,6 +24,9 @@ class Producto {
 
   /// Costo opcional del producto (#Requerimiento 2 Retro).
   final double? costo;
+
+  /// Descripción opcional del producto (marca, presentación, notas).
+  final String? descripcion;
 
   /// Compatibilidad hacia atrás si algún componente busca `creadoPor`.
   String? get creadoPor => agregadoPor;
@@ -54,6 +58,9 @@ class Producto {
       c = double.tryParse(rawCosto);
     }
 
+    final rawDesc = (data['descripcion'] as String?)?.trim();
+    final desc = (rawDesc != null && rawDesc.isNotEmpty) ? rawDesc : null;
+
     return Producto(
       id: id,
       hogarId: (data['hogarId'] as String?) ?? '',
@@ -63,6 +70,7 @@ class Producto {
       agregadoPor: (data['agregadoPor'] as String?) ?? (data['creadoPor'] as String?),
       fechaCreacion: fecha,
       costo: c,
+      descripcion: desc,
     );
   }
 
@@ -76,6 +84,8 @@ class Producto {
       if (fechaCreacion != null)
         'fechaCreacion': Timestamp.fromDate(fechaCreacion!),
       if (costo != null) 'costo': costo,
+      if (descripcion != null && descripcion!.trim().isNotEmpty)
+        'descripcion': descripcion!.trim(),
     };
   }
 
@@ -89,6 +99,8 @@ class Producto {
     DateTime? fechaCreacion,
     double? costo,
     bool limpiarCosto = false,
+    String? descripcion,
+    bool limpiarDescripcion = false,
   }) {
     return Producto(
       id: id ?? this.id,
@@ -99,6 +111,7 @@ class Producto {
       agregadoPor: agregadoPor ?? this.agregadoPor,
       fechaCreacion: fechaCreacion ?? this.fechaCreacion,
       costo: limpiarCosto ? null : (costo ?? this.costo),
+      descripcion: limpiarDescripcion ? null : (descripcion ?? this.descripcion),
     );
   }
 }
