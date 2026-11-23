@@ -25,10 +25,16 @@ void main() {
     expect(lista.map((i) => i.nombre).toList(), ['Zoe', 'Ana', 'Marco', 'sofía']);
   });
 
-  test('Hogar.fromMap lee nombre y código', () {
-    final h = Hogar.fromMap('h1', {'nombre': 'Depa de Ana', 'codigoInvitacion': 'A3F9K2'});
+  test('Hogar.fromMap lee nombre, código y tipoEspacio global', () {
+    final h = Hogar.fromMap('h1', {
+      'nombre': 'Equipo Alfa',
+      'codigoInvitacion': 'A3F9K2',
+      'tipoEspacio': TipoEspacio.equipo,
+    });
     expect(h.id, 'h1');
-    expect(h.nombre, 'Depa de Ana');
+    expect(h.nombre, 'Equipo Alfa');
     expect(h.codigoInvitacion, 'A3F9K2');
+    expect(h.tipoEspacio, TipoEspacio.equipo);
+    expect(TipoEspacio.etiquetaDe(h.tipoEspacio), 'Equipo / Proyecto');
   });
 }

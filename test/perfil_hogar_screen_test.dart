@@ -19,9 +19,20 @@ class FakePerfilService extends HogarService {
   final integrantesCtrl = StreamController<List<Integrante>>.broadcast();
   String? hogarIdActual = 'h1';
   String? hogarIdPedido;
+  List<Hogar> hogaresDelUsuario = [];
+  String? ultimoHogarCambiado;
 
   @override
   Future<String?> obtenerHogarIdActual() async => hogarIdActual;
+
+  @override
+  Future<List<Hogar>> obtenerHogaresDelUsuario() async => hogaresDelUsuario;
+
+  @override
+  Future<void> cambiarHogarActivo(String nuevoHogarId) async {
+    ultimoHogarCambiado = nuevoHogarId;
+    hogarIdActual = nuevoHogarId;
+  }
 
   @override
   Stream<Hogar?> observarHogar(String hogarId) {
@@ -168,7 +179,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Todavía no perteneces a ningún hogar'), findsOneWidget);
+    expect(find.text('Todavía no perteneces a ningún espacio'), findsOneWidget);
   });
 
   testWidgets('admin puede ver el correo del integrante en la lista y en el modal', (tester) async {
@@ -219,5 +230,38 @@ void main() {
 
     expect(find.text('Visible solo para administradores'), findsOneWidget);
     expect(find.text('carlos@easyhome.test'), findsNothing);
+  });
+
+  testWidgets('selector de Espacios permite cambiar entre un equipo y otro espacio', (tester) async {
+    const h2 = Hogar(
+      id: 'h2',
+      nombre: 'Equipo Alfa',
+      codigoInvitacion: 'B7K9M2',
+      tipoEspacio: TipoEspacio.equipo,
+    );
+    final fake = await _montar(tester);
+    fake.hogaresDelUsuario = [_hogar, h2];
+    await _emitir(tester, fake, integrantes: [_ana]);
+
+    expect(find.byKey(const Key('badge_tipo_espacio')), findsOneWidget);
+    expect(find.byKey(const Key('boton_gestionar_hogares')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('boton_gestionar_hogares')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mis espacios'), findsOneWidget);
+    expect(find.text('Equipo Alfa'), findsOneWidget);
+    expect(find.text('Equipo / Proyecto'), findsOneWidget);
+
+    // Cambiar al segundo espacio
+    await tester.tap(find.byKey(const Key('item_hogar_h2')));
+    await tester.pump();
+    fake.hogarCtrl.add(h2);
+    fake.integrantesCtrl.add([_ana]);
+    await tester.pumpAndSettle();
+
+    expect(fake.ultimoHogarCambiado, 'h2');
+    expect(find.text('Equipo Alfa'), findsOneWidget);
+    expect(find.text('Equipo / Proyecto'), findsOneWidget);
   });
 }

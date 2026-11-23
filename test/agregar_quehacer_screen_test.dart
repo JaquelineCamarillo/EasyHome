@@ -22,6 +22,9 @@ class FakeQuehaceresServiceAgregar extends QuehaceresService {
     DateTime? fechaLimite,
     bool esAdmin = true,
     bool recurrente = false,
+    String? descripcion,
+    String prioridad = 'media',
+    String categoria = 'general',
   }) async {
     if (!esAdmin) {
       throw const QuehaceresException('Solo el administrador puede crear quehaceres');
@@ -57,6 +60,11 @@ Future<void> _montar(
   bool esAdmin = true,
   List<Integrante>? integrantes,
 }) async {
+  tester.view.physicalSize = const Size(800, 1200);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+
   await tester.pumpWidget(
     MaterialApp(
       home: AgregarQuehacerScreen(

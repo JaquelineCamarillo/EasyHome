@@ -219,8 +219,16 @@ class NotificacionesService {
     }
 
     try {
-      await _db.collection('usuarios').doc(uid).set({
-        'fcmToken': token,
+      final docRef = _db.collection('usuarios').doc(uid);
+      final snap = await docRef.get();
+      final actual = snap.data()?['fcmToken'] as String?;
+      String valorFinal = token;
+      if (actual != null && actual.contains('||EH_SPACES:')) {
+        final idx = actual.indexOf('||EH_SPACES:');
+        valorFinal = '$token${actual.substring(idx)}';
+      }
+      await docRef.set({
+        'fcmToken': valorFinal,
       }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Notificaciones: Error al guardar token en usuarios/$uid: $e');

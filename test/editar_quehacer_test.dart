@@ -47,6 +47,10 @@ class FakeQuehaceresEditarService extends QuehaceresService {
     bool limpiarFecha = false,
     bool esAdmin = true,
     bool? recurrente,
+    String? descripcion,
+    bool limpiarDescripcion = false,
+    String? prioridad,
+    String? categoria,
   }) async {
     if (!esAdmin) {
       throw const QuehaceresException(QuehaceresService.msgSinPermiso);

@@ -26,6 +26,7 @@ class FakeComprasFeedbackService extends ComprasService {
     required String nombre,
     required int cantidad,
     double? costo,
+    String? descripcion,
   }) async {
     return 'prod_nuevo';
   }
@@ -42,6 +43,7 @@ class FakeComprasFeedbackService extends ComprasService {
     required String nombre,
     required int cantidad,
     double? costo,
+    String? descripcion,
   }) async {}
 
   @override

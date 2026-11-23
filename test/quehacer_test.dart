@@ -76,5 +76,26 @@ void main() {
       final sinFecha = actualizado.copyWith(limpiarFechaLimite: true);
       expect(sinFecha.fechaLimite, isNull);
     });
+
+    test('soporta descripcion, prioridad y categoria en Quehacer', () {
+      final q = Quehacer.fromMap('q_ext', {
+        'hogarId': 'h1',
+        'titulo': 'Revisar servidor',
+        'asignadoA': 'u1',
+        'creadoPor': 'admin1',
+        'descripcion': 'Verificar logs y respaldos semanales',
+        'prioridad': PrioridadQuehacer.alta,
+        'categoria': CategoriaQuehacer.gestion,
+      });
+
+      expect(q.descripcion, 'Verificar logs y respaldos semanales');
+      expect(q.prioridad, PrioridadQuehacer.alta);
+      expect(q.categoria, CategoriaQuehacer.gestion);
+
+      final map = q.toMap();
+      expect(map['descripcion'], 'Verificar logs y respaldos semanales');
+      expect(map['prioridad'], PrioridadQuehacer.alta);
+      expect(map['categoria'], CategoriaQuehacer.gestion);
+    });
   });
 }

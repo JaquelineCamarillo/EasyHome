@@ -58,8 +58,9 @@ class QuehaceresService {
   ///
   /// Se ordenan en memoria del cliente:
   /// 1. Pendientes primero (`hecho == false`).
-  /// 2. Por `fechaLimite` más próxima (los que tienen fecha van antes que los que no tienen).
-  /// 3. Por `titulo` alfabético.
+  /// 2. Por prioridad (Alta -> Media -> Baja).
+  /// 3. Por `fechaLimite` más próxima (los que tienen fecha van antes que los que no tienen).
+  /// 4. Por `titulo` alfabético.
   Stream<List<Quehacer>> observarQuehaceres(String hogarId) {
     return _db
         .collection('quehaceres')
@@ -76,7 +77,14 @@ class QuehaceresService {
           return a.hecho ? 1 : -1;
         }
 
-        // 2. Orden por fecha límite (más próxima primero)
+        // 2. Orden por prioridad (mayor peso primero)
+        final pesoA = PrioridadQuehacer.peso(a.prioridad);
+        final pesoB = PrioridadQuehacer.peso(b.prioridad);
+        if (pesoA != pesoB) {
+          return pesoB.compareTo(pesoA);
+        }
+
+        // 3. Orden por fecha límite (más próxima primero)
         if (a.fechaLimite != null && b.fechaLimite != null) {
           final compFecha = a.fechaLimite!.compareTo(b.fechaLimite!);
           if (compFecha != 0) return compFecha;
@@ -86,7 +94,7 @@ class QuehaceresService {
           return 1;
         }
 
-        // 3. Orden por título
+        // 4. Orden por título
         return a.titulo.toLowerCase().compareTo(b.titulo.toLowerCase());
       });
 
@@ -102,6 +110,9 @@ class QuehaceresService {
     DateTime? fechaLimite,
     bool esAdmin = true,
     bool recurrente = false,
+    String? descripcion,
+    String prioridad = PrioridadQuehacer.media,
+    String categoria = CategoriaQuehacer.general,
   }) async {
     final uid = usuarioActualId;
     if (uid == null) throw const QuehaceresException(msgSesionExpirada);
@@ -118,11 +129,18 @@ class QuehaceresService {
     try {
       // Validar que el responsable pertenezca al mismo hogar
       final usuarioDoc = await _db.collection('usuarios').doc(asignadoA).get();
-      if (!usuarioDoc.exists || usuarioDoc.data()?['hogarId'] != hogarId) {
+      final dataResp = usuarioDoc.data();
+      final hogaresResp = dataResp?['hogaresIds'] is List
+          ? (dataResp!['hogaresIds'] as List).map((e) => e.toString()).toList()
+          : <String>[];
+      final pertenece = usuarioDoc.exists &&
+          (dataResp?['hogarId'] == hogarId || hogaresResp.contains(hogarId));
+      if (!pertenece) {
         throw const QuehaceresException(msgResponsableInvalido);
       }
 
-      final docRef = await _db.collection('quehaceres').add({
+      final descLimpia = (descripcion ?? '').trim();
+      final Map<String, dynamic> datos = {
         'hogarId': hogarId,
         'titulo': tituloLimpio,
         'asignadoA': asignadoA,
@@ -130,7 +148,12 @@ class QuehaceresService {
         'creadoPor': uid,
         'fechaLimite': fechaLimite != null ? Timestamp.fromDate(fechaLimite) : null,
         'recurrente': recurrente,
-      });
+        'prioridad': prioridad,
+        'categoria': categoria,
+        if (descLimpia.isNotEmpty) 'descripcion': descLimpia,
+      };
+
+      final docRef = await _db.collection('quehaceres').add(datos);
 
       return docRef.id;
     } on QuehaceresException {
@@ -170,7 +193,7 @@ class QuehaceresService {
     }
   }
 
-  /// Actualiza los datos de un quehacer (título, fecha límite y/o recurrencia).
+  /// Actualiza los datos de un quehacer (título, descripción, prioridad, categoría, fecha límite y/o recurrencia).
   /// Exclusivo para administradores.
   Future<void> actualizarQuehacer({
     required String quehacerId,
@@ -179,6 +202,10 @@ class QuehaceresService {
     bool limpiarFecha = false,
     bool esAdmin = true,
     bool? recurrente,
+    String? descripcion,
+    bool limpiarDescripcion = false,
+    String? prioridad,
+    String? categoria,
   }) async {
     if (!esAdmin) {
       throw const QuehaceresException(msgSinPermiso);
@@ -202,6 +229,21 @@ class QuehaceresService {
 
       if (recurrente != null) {
         datos['recurrente'] = recurrente;
+      }
+
+      if (limpiarDescripcion) {
+        datos['descripcion'] = null;
+      } else if (descripcion != null) {
+        final descLimpia = descripcion.trim();
+        datos['descripcion'] = descLimpia.isEmpty ? null : descLimpia;
+      }
+
+      if (prioridad != null) {
+        datos['prioridad'] = prioridad;
+      }
+
+      if (categoria != null) {
+        datos['categoria'] = categoria;
       }
 
       await _db.collection('quehaceres').doc(quehacerId).update(datos);
@@ -228,7 +270,13 @@ class QuehaceresService {
     try {
       // Validar que el nuevo responsable pertenezca al hogar
       final usuarioDoc = await _db.collection('usuarios').doc(nuevoAsignadoA).get();
-      if (!usuarioDoc.exists || usuarioDoc.data()?['hogarId'] != hogarId) {
+      final dataResp = usuarioDoc.data();
+      final hogaresResp = dataResp?['hogaresIds'] is List
+          ? (dataResp!['hogaresIds'] as List).map((e) => e.toString()).toList()
+          : <String>[];
+      final pertenece = usuarioDoc.exists &&
+          (dataResp?['hogarId'] == hogarId || hogaresResp.contains(hogarId));
+      if (!pertenece) {
         throw const QuehaceresException(msgResponsableInvalido);
       }
 

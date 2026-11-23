@@ -8,6 +8,8 @@ class Validators {
   static const int maxNombreUsuario = 60;
   static const int maxTituloQuehacer = 120;
   static const int maxNombreProducto = 120;
+  static const int maxDescripcionProducto = 250;
+  static const int maxDescripcionQuehacer = 300;
 
   /// Sanitiza entradas de texto previniendo caracteres nulos o de control invisibles.
   static String sanitizar(String? input) {
@@ -99,6 +101,26 @@ class Validators {
       return 'Máximo 2 decimales (ej. 25.50)';
     }
 
+    return null;
+  }
+
+  /// Descripción del producto: opcional, máximo [maxDescripcionProducto] caracteres.
+  static String? descripcionProducto(String? value) {
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty) return null;
+    if (texto.length > maxDescripcionProducto) {
+      return 'Máximo $maxDescripcionProducto caracteres';
+    }
+    return null;
+  }
+
+  /// Descripción del quehacer: opcional, máximo [maxDescripcionQuehacer] caracteres.
+  static String? descripcionQuehacer(String? value) {
+    final texto = (value ?? '').trim();
+    if (texto.isEmpty) return null;
+    if (texto.length > maxDescripcionQuehacer) {
+      return 'Máximo $maxDescripcionQuehacer caracteres';
+    }
     return null;
   }
 

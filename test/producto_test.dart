@@ -60,5 +60,19 @@ void main() {
       expect(modificado.comprado, isTrue);
       expect(modificado.nombre, 'Huevos');
     });
+
+    test('soporta descripcion opcional en Producto', () {
+      final prod = Producto.fromMap('p_desc', {
+        'hogarId': 'h1',
+        'nombre': 'Leche',
+        'cantidad': 2,
+        'descripcion': 'Deslactosada 1L',
+      });
+      expect(prod.descripcion, 'Deslactosada 1L');
+      expect(prod.toMap()['descripcion'], 'Deslactosada 1L');
+
+      final sinDesc = prod.copyWith(limpiarDescripcion: true);
+      expect(sinDesc.descripcion, isNull);
+    });
   });
 }

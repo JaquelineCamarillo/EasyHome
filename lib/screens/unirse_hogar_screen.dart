@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 
 import '../routes.dart';
 import '../services/hogar_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/codigo_invitacion.dart';
 import '../utils/mayusculas_formatter.dart';
+import '../widgets/logo.dart';
 
 /// Pantalla #6 — Unirse a un hogar existente mediante su código de invitación.
 class UnirseHogarScreen extends StatefulWidget {
@@ -45,8 +47,11 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
     try {
       await _hogares.unirseAHogar(codigo: _codigoCtrl.text);
       if (!mounted) return;
-      // Unido con éxito: directo al dashboard.
-      Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+      // Unido con éxito: directo al dashboard limpio.
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.dashboard,
+        (_) => false,
+      );
     } on HogarException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -88,58 +93,39 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        color: tema.colorScheme.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: tema.colorScheme.primary.withValues(alpha: 0.3),
-                            blurRadius: 18,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.group_add_rounded,
-                        size: 40,
-                        color: Colors.white,
-                      ),
-                    ),
+                  const Center(
+                    child: EasyHomeLogo(size: 96),
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Únete a un hogar',
+                    'Únete a un espacio',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: tema.colorScheme.primary,
-                      letterSpacing: -0.5,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.verdeOliva,
+                      letterSpacing: -0.6,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Pídele el código de 6 caracteres a quien creó el hogar',
+                    'Pídele el código de 6 caracteres a quien creó el espacio',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.bodyMedium?.copyWith(
-                      color: Colors.black54,
+                      color: AppColors.textoSecundario,
                     ),
                   ),
                   const SizedBox(height: 32),
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(26),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE8E4DA)),
-                      boxShadow: const [
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: AppColors.borde, width: 1.2),
+                      boxShadow: [
                         BoxShadow(
-                          color: Color(0x08000000),
-                          blurRadius: 16,
-                          offset: Offset(0, 6),
+                          color: AppColors.verdeOliva.withValues(alpha: 0.06),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
                         ),
                       ],
                     ),
@@ -221,7 +207,7 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text('Unirse al hogar'),
+                              : const Text('Unirse al espacio'),
                         ),
                       ],
                     ),
@@ -239,7 +225,7 @@ class _UnirseHogarScreenState extends State<UnirseHogarScreen> {
                         key: const Key('enlace_crear_hogar'),
                         onTap: _irACrearHogar,
                         child: Text(
-                          'Crea tu hogar',
+                          'Crea tu espacio',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: tema.colorScheme.primary,

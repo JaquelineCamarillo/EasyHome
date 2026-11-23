@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/hogar.dart';
 import '../models/integrante.dart';
 import '../models/producto.dart';
 import '../models/quehacer.dart';
@@ -10,8 +11,10 @@ import '../services/hogar_service.dart';
 import '../services/notificaciones_service.dart';
 import '../services/quehaceres_service.dart';
 import '../services/usuario_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/app_feedback.dart';
 import '../utils/validators.dart';
+import '../widgets/logo.dart';
 import '../widgets/producto_card.dart';
 import '../widgets/quehacer_card.dart';
 import 'detalle_quehacer_modal.dart';
@@ -62,6 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   late int _indiceSeccion = widget.vistaInicial;
   String _filtroQuehaceres = 'mis';
+  String _filtroCategoriaQuehaceres = 'todas';
   String? _hogarIdResuelto;
 
   Stream<List<Producto>>? _productosStream;
@@ -73,6 +77,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _mostrarBuscador = false;
   final _busquedaCtrl = TextEditingController();
 
+  bool _mostrarBuscadorQuehaceres = false;
+  final _busquedaQuehaceresCtrl = TextEditingController();
+  String _filtroPrioridadQuehaceres = 'todas';
+
   @override
   void initState() {
     super.initState();
@@ -82,6 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _busquedaCtrl.dispose();
+    _busquedaQuehaceresCtrl.dispose();
     _notificaciones.dispose();
     super.dispose();
   }
@@ -93,7 +102,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (hogarId == null) {
         setState(() {
-          _error = 'Todavía no perteneces a ningún hogar';
+          _error = 'Todavía no perteneces a ningún espacio';
           _cargandoInicial = false;
         });
         return;
@@ -143,6 +152,176 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _cargandoInicial = false;
         });
       }
+    }
+  }
+
+  Future<void> _verificarCambioDeEspacio() async {
+    if (widget.hogarId != null) return;
+    try {
+      final nuevoHogarId = await _hogares.obtenerHogarIdActual();
+      if (!mounted || nuevoHogarId == null) return;
+      if (nuevoHogarId != _hogarIdResuelto) {
+        setState(() {
+          _hogarIdResuelto = nuevoHogarId;
+          _productosStream = _compras.observarProductos(nuevoHogarId);
+          _quehaceresStream = _quehaceres.observarQuehaceres(nuevoHogarId);
+          _integrantesStream = _hogares.observarIntegrantes(nuevoHogarId);
+        });
+        _ejecutarRotacionSemanal(nuevoHogarId);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _mostrarSelectorEspaciosDashboard() async {
+    List<Hogar> misHogares = [];
+    try {
+      misHogares = await _hogares.obtenerHogaresDelUsuario();
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: Material(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.black12,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const Row(
+                    children: [
+                      Icon(Icons.workspaces_rounded, color: Color(0xFF234E3F)),
+                      SizedBox(width: 8),
+                      Text(
+                        'Mis espacios',
+                        key: Key('titulo_selector_hogares_dash'),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E2D27),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ...misHogares.map((h) {
+                    final esActual = h.id == _hogarIdResuelto;
+                    return ListTile(
+                      key: Key('item_hogar_dash_${h.id}'),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      leading: CircleAvatar(
+                        backgroundColor: esActual
+                            ? AppColors.verdeOliva
+                            : const Color(0xFFE8E4DA),
+                        foregroundColor:
+                            esActual ? Colors.white : const Color(0xFF1E2D27),
+                        child: const Icon(Icons.home_work_outlined, size: 20),
+                      ),
+                      title: Text(
+                        h.nombre,
+                        style: TextStyle(
+                          fontWeight:
+                              esActual ? FontWeight.bold : FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        TipoEspacio.etiquetaDe(h.tipoEspacio),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: esActual
+                          ? const Icon(Icons.check_circle_rounded,
+                              color: AppColors.verdeOliva)
+                          : const Icon(Icons.swap_horiz_rounded,
+                              color: Colors.black45),
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        if (h.id == _hogarIdResuelto) return;
+                        try {
+                          await _hogares.cambiarHogarActivo(h.id);
+                          if (!mounted) return;
+                          setState(() {
+                            _hogarIdResuelto = h.id;
+                            _productosStream = _compras.observarProductos(h.id);
+                            _quehaceresStream =
+                                _quehaceres.observarQuehaceres(h.id);
+                            _integrantesStream =
+                                _hogares.observarIntegrantes(h.id);
+                          });
+                          _ejecutarRotacionSemanal(h.id);
+                          AppFeedback.mostrarExito(
+                              context, 'Cambiaste a ${h.nombre}');
+                        } catch (_) {
+                          if (!mounted) return;
+                          AppFeedback.mostrarError(
+                              context, 'No se pudo cambiar de espacio');
+                        }
+                      },
+                    );
+                  }),
+                  const Divider(height: 24),
+                  FilledButton.icon(
+                    key: const Key('boton_crear_nuevo_hogar_dash'),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Crear espacio'),
+                    onPressed: () async {
+                      final nav = Navigator.of(context);
+                      Navigator.of(ctx).pop();
+                      await nav.pushNamed(AppRoutes.hogar);
+                      if (mounted) {
+                        await _verificarCambioDeEspacio();
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    key: const Key('boton_unirse_otro_hogar_dash'),
+                    icon: const Icon(Icons.key_rounded),
+                    label: const Text('Unirme a otro espacio con código'),
+                    onPressed: () async {
+                      final nav = Navigator.of(context);
+                      Navigator.of(ctx).pop();
+                      await nav.pushNamed(AppRoutes.unirseHogar);
+                      if (mounted) {
+                        await _verificarCambioDeEspacio();
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _irAPerfilHogar() async {
+    await Navigator.of(context).pushNamed(AppRoutes.perfilHogar);
+    if (mounted) {
+      await _verificarCambioDeEspacio();
     }
   }
 
@@ -240,13 +419,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final opcion = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Material(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          child: Column(
+      builder: (ctx) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: Material(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -327,7 +509,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
 
     if (!mounted || opcion == null) return;
 
@@ -341,6 +525,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _mostrarFormularioEditar(Producto producto) async {
     final formKey = GlobalKey<FormState>();
     final nombreCtrl = TextEditingController(text: producto.nombre);
+    final descripcionCtrl = TextEditingController(text: producto.descripcion ?? '');
     final cantidadCtrl =
         TextEditingController(text: producto.cantidad.toString());
     final costoCtrl = TextEditingController(
@@ -368,12 +553,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
-            child: Material(
-              color: Colors.white,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
-              clipBehavior: Clip.antiAlias,
-              child: SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  clipBehavior: Clip.antiAlias,
+                  child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: Form(
                   key: formKey,
@@ -417,6 +605,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           prefixIcon: Icon(Icons.shopping_bag_outlined),
                         ),
                         validator: Validators.nombreProducto,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        key: const Key('campo_editar_descripcion_producto'),
+                        controller: descripcionCtrl,
+                        textCapitalization: TextCapitalization.sentences,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          labelText: 'Descripción o detalles (opcional)',
+                          prefixIcon: Icon(Icons.notes_rounded),
+                        ),
+                        validator: Validators.descripcionProducto,
                       ),
                       const SizedBox(height: 16),
                       Row(
@@ -484,6 +684,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 final nuevaCantidad =
                                     int.tryParse(cantidadCtrl.text.trim()) ?? 1;
                                 final nuevoNombre = nombreCtrl.text.trim();
+                                final nuevaDesc = descripcionCtrl.text.trim();
                                 double? nuevoCosto;
                                 final costoTxt = costoCtrl.text.trim();
                                 if (costoTxt.isNotEmpty) {
@@ -497,6 +698,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     nombre: nuevoNombre,
                                     cantidad: nuevaCantidad,
                                     costo: nuevoCosto,
+                                    descripcion: nuevaDesc.isNotEmpty ? nuevaDesc : null,
                                   );
                                   if (!ctx.mounted) return;
                                   Navigator.of(ctx).pop();
@@ -530,10 +732,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+      );
+    },
+  ),
+);
   }
 
   Future<void> _irAAgregarProducto() async {
@@ -625,7 +829,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final filtrados = query.isEmpty
             ? todos
             : todos
-                .where((p) => p.nombre.toLowerCase().contains(query))
+                .where((p) =>
+                    p.nombre.toLowerCase().contains(query) ||
+                    (p.descripcion?.toLowerCase().contains(query) ?? false))
                 .toList();
 
         final pendientes = filtrados.where((p) => !p.comprado).toList();
@@ -651,12 +857,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       onChanged: (_) => setState(() {}),
                     )
-                  : const Text(
-                      'Lista de compras',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3,
-                      ),
+                  : const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        EasyHomeLogo(size: 30, mostrarSombra: false),
+                        SizedBox(width: 8),
+                        Text(
+                          'Lista de compras',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
                     ),
               actions: [
                 IconButton(
@@ -674,40 +887,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   },
                 ),
                 IconButton(
+                  key: const Key('boton_cambiar_espacio_compras'),
+                  tooltip: 'Cambiar de espacio',
+                  icon: const Icon(Icons.workspaces_outline),
+                  color: AppColors.verdeOliva,
+                  onPressed: _mostrarSelectorEspaciosDashboard,
+                ),
+                IconButton(
                   key: const Key('boton_perfil_hogar'),
-                  tooltip: 'Perfil del hogar',
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFE8E4DA)),
-                    ),
-                    child: Icon(
-                      Icons.group_rounded,
-                      size: 20,
-                      color: tema.colorScheme.primary,
-                    ),
-                  ),
-                  onPressed: () =>
-                      Navigator.of(context).pushNamed(AppRoutes.perfilHogar),
+                  tooltip: 'Perfil del espacio',
+                  icon: const Icon(Icons.group_rounded),
+                  color: AppColors.verdeOliva,
+                  onPressed: _irAPerfilHogar,
                 ),
                 IconButton(
                   key: const Key('boton_mi_perfil_dash'),
                   tooltip: 'Mi perfil',
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFE8E4DA)),
-                    ),
-                    child: Icon(
-                      Icons.person_outline_rounded,
-                      size: 20,
-                      color: tema.colorScheme.primary,
-                    ),
-                  ),
+                  icon: const Icon(Icons.person_outline_rounded),
+                  color: AppColors.verdeOliva,
                   onPressed: () =>
                       Navigator.of(context).pushNamed(AppRoutes.editarPerfil),
                 ),
@@ -715,94 +912,104 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(56),
-                child: Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEBE7DD),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: TabBar(
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: Colors.transparent,
-                    indicator: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x10000000),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 960),
+                    child: Container(
+                      margin:
+                          const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEBE7DD),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: TabBar(
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        indicator: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x10000000),
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    labelColor: tema.colorScheme.primary,
-                    unselectedLabelColor: Colors.black54,
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                    tabs: [
-                      Tab(
-                        key: const Key('tab_pendientes'),
-                        text: 'Pendientes (${pendientes.length})',
+                        labelColor: tema.colorScheme.primary,
+                        unselectedLabelColor: Colors.black54,
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        tabs: [
+                          Tab(
+                            key: const Key('tab_pendientes'),
+                            text: 'Pendientes (${pendientes.length})',
+                          ),
+                          Tab(
+                            key: const Key('tab_comprados'),
+                            text: 'Comprados (${comprados.length})',
+                          ),
+                        ],
                       ),
-                      Tab(
-                        key: const Key('tab_comprados'),
-                        text: 'Comprados (${comprados.length})',
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
             body: SafeArea(
-              child: todos.isEmpty
-                  ? const EstadoVacioProductos()
-                  : Column(
-                      children: [
-                        if (todos.isNotEmpty && query.isEmpty)
-                          Builder(
-                            builder: (_) {
-                              final compradosConCosto = todos
-                                  .where((p) => p.comprado && p.costo != null);
-                              final totalCosto = compradosConCosto.isNotEmpty
-                                  ? compradosConCosto.fold<double>(
-                                      0.0,
-                                      (acc, p) => acc + (p.costo! * p.cantidad),
-                                    )
-                                  : null;
-                              return ProgresoComprasBanner(
-                                comprados:
-                                    todos.where((p) => p.comprado).length,
-                                total: todos.length,
-                                totalCostoComprados: totalCosto,
-                              );
-                            },
-                          ),
-                        Expanded(
-                          child: TabBarView(
-                            children: [
-                              ListaProductos(
-                                productos: pendientes,
-                                tipo: TipoListaProductos.pendientes,
-                                onToggle: _cambiarEstadoProducto,
-                                onDelete: _confirmarEliminarProducto,
-                                onLongPress: _mostrarMenuOpciones,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: todos.isEmpty
+                      ? const EstadoVacioProductos()
+                      : Column(
+                          children: [
+                            if (todos.isNotEmpty && query.isEmpty)
+                              Builder(
+                                builder: (_) {
+                                  final compradosConCosto = todos
+                                      .where((p) => p.comprado && p.costo != null);
+                                  final totalCosto = compradosConCosto.isNotEmpty
+                                      ? compradosConCosto.fold<double>(
+                                          0.0,
+                                          (acc, p) => acc + (p.costo! * p.cantidad),
+                                        )
+                                      : null;
+                                  return ProgresoComprasBanner(
+                                    comprados:
+                                        todos.where((p) => p.comprado).length,
+                                    total: todos.length,
+                                    totalCostoComprados: totalCosto,
+                                  );
+                                },
                               ),
-                              ListaProductos(
-                                productos: comprados,
-                                tipo: TipoListaProductos.comprados,
-                                onToggle: _cambiarEstadoProducto,
-                                onDelete: _confirmarEliminarProducto,
-                                onLongPress: _mostrarMenuOpciones,
+                            Expanded(
+                              child: TabBarView(
+                                children: [
+                                  ListaProductos(
+                                    productos: pendientes,
+                                    tipo: TipoListaProductos.pendientes,
+                                    onToggle: _cambiarEstadoProducto,
+                                    onDelete: _confirmarEliminarProducto,
+                                    onLongPress: _mostrarMenuOpciones,
+                                  ),
+                                  ListaProductos(
+                                    productos: comprados,
+                                    tipo: TipoListaProductos.comprados,
+                                    onToggle: _cambiarEstadoProducto,
+                                    onDelete: _confirmarEliminarProducto,
+                                    onLongPress: _mostrarMenuOpciones,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                ),
+              ),
             ),
             bottomNavigationBar: _crearBottomNav(),
             floatingActionButton: FloatingActionButton.extended(
@@ -833,7 +1040,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _indiceSeccion = index;
         });
       },
-      selectedItemColor: const Color(0xFF234E3F),
+      selectedItemColor: AppColors.verdeOliva,
       unselectedItemColor: Colors.black54,
       items: const [
         BottomNavigationBarItem(
@@ -844,7 +1051,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         BottomNavigationBarItem(
           icon: Icon(Icons.checklist_rounded, key: Key('nav_quehaceres')),
           activeIcon: Icon(Icons.checklist_outlined),
-          label: 'Quehaceres',
+          label: 'Tareas',
         ),
       ],
     );
@@ -908,13 +1115,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final opcion = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Material(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          child: Column(
+      builder: (ctx) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: Material(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            clipBehavior: Clip.antiAlias,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1016,7 +1226,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
 
     if (!mounted || opcion == null) return;
 
@@ -1038,8 +1250,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final formKey = GlobalKey<FormState>();
     final tituloCtrl = TextEditingController(text: quehacer.titulo);
+    final descripcionCtrl = TextEditingController(text: quehacer.descripcion ?? '');
     DateTime? fechaSeleccionada = quehacer.fechaLimite;
     bool recurrente = quehacer.recurrente;
+    String prioridadSeleccionada = quehacer.prioridad;
+    String categoriaSeleccionada = quehacer.categoria;
     bool guardando = false;
 
     await showModalBottomSheet<void>(
@@ -1067,12 +1282,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
-            child: Material(
-              color: Colors.white,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
-              clipBehavior: Clip.antiAlias,
-              child: SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                  clipBehavior: Clip.antiAlias,
+                  child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                 child: Form(
                   key: formKey,
@@ -1118,6 +1336,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         validator: Validators.tituloQuehacer,
                       ),
                       const SizedBox(height: 16),
+                      TextFormField(
+                        key: const Key('campo_editar_descripcion_quehacer'),
+                        controller: descripcionCtrl,
+                        textCapitalization: TextCapitalization.sentences,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          labelText: 'Descripción o instrucciones (opcional)',
+                          prefixIcon: Icon(Icons.notes_rounded),
+                        ),
+                        validator: Validators.descripcionQuehacer,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              key: const Key('dropdown_editar_prioridad_quehacer'),
+                              initialValue: prioridadSeleccionada,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Prioridad',
+                                prefixIcon: Icon(Icons.flag_outlined),
+                              ),
+                              items: PrioridadQuehacer.etiquetas.entries.map((e) {
+                                return DropdownMenuItem<String>(
+                                  value: e.key,
+                                  child: Text(
+                                    e.value,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() => prioridadSeleccionada = val);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              key: const Key('dropdown_editar_categoria_quehacer'),
+                              initialValue: categoriaSeleccionada,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Categoría / Área',
+                                prefixIcon: Icon(Icons.category_outlined),
+                              ),
+                              items: CategoriaQuehacer.etiquetas.entries.map((e) {
+                                return DropdownMenuItem<String>(
+                                  value: e.key,
+                                  child: Text(
+                                    e.value,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() => categoriaSeleccionada = val);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 10),
@@ -1152,18 +1438,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             Wrap(
                               spacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 if (fechaSeleccionada != null)
-                                  IconButton(
+                                  TextButton(
                                     key: const Key(
                                         'boton_quitar_fecha_edicion'),
-                                    icon: const Icon(Icons.close_rounded,
-                                        size: 18, color: Colors.redAccent),
                                     onPressed: () {
                                       setModalState(() {
                                         fechaSeleccionada = null;
                                       });
                                     },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: const Color(0xFF8A6B53),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 6),
+                                    ),
+                                    child: const Text(
+                                      'Quitar fecha',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
                                   ),
                                 FilledButton.tonal(
                                   key: const Key(
@@ -1215,6 +1512,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 }
                                 setModalState(() => guardando = true);
                                 try {
+                                  final descLimpia = descripcionCtrl.text.trim();
                                   await _quehaceres.actualizarQuehacer(
                                     quehacerId: quehacer.id,
                                     titulo: tituloCtrl.text.trim(),
@@ -1222,6 +1520,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     limpiarFecha: fechaSeleccionada == null,
                                     esAdmin: esAdmin,
                                     recurrente: recurrente,
+                                    descripcion: descLimpia.isNotEmpty ? descLimpia : null,
+                                    limpiarDescripcion: descLimpia.isEmpty,
+                                    prioridad: prioridadSeleccionada,
+                                    categoria: categoriaSeleccionada,
                                   );
                                   if (!ctx.mounted) return;
                                   Navigator.of(ctx).pop();
@@ -1259,10 +1561,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
+          ),
+        ),
+      );
+    },
+  ),
+);
   }
 
   Future<void> _mostrarDialogoReasignarQuehacer(
@@ -1440,49 +1744,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
             backgroundColor: Colors.transparent,
             scrolledUnderElevation: 0,
             elevation: 0,
-            title: const Text(
-              'Quehaceres',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-              ),
-            ),
+            title: _mostrarBuscadorQuehaceres
+                ? TextField(
+                    key: const Key('campo_buscador_appbar_quehaceres'),
+                    controller: _busquedaQuehaceresCtrl,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: 'Buscar tarea, responsable o área...',
+                      isDense: true,
+                      prefixIcon: Icon(Icons.search, size: 20),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  )
+                : const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      EasyHomeLogo(size: 30, mostrarSombra: false),
+                      SizedBox(width: 8),
+                      Text(
+                        'Tareas y Actividades',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ],
+                  ),
             actions: [
               IconButton(
+                key: const Key('boton_buscar_quehaceres_appbar'),
+                tooltip: _mostrarBuscadorQuehaceres
+                    ? 'Cerrar búsqueda'
+                    : 'Buscar actividad',
+                icon: Icon(_mostrarBuscadorQuehaceres
+                    ? Icons.close_rounded
+                    : Icons.search_rounded),
+                onPressed: () {
+                  setState(() {
+                    _mostrarBuscadorQuehaceres = !_mostrarBuscadorQuehaceres;
+                    if (!_mostrarBuscadorQuehaceres) {
+                      _busquedaQuehaceresCtrl.clear();
+                    }
+                  });
+                },
+              ),
+              IconButton(
+                key: const Key('boton_cambiar_espacio_quehaceres'),
+                tooltip: 'Cambiar de espacio',
+                icon: const Icon(Icons.workspaces_outline),
+                color: AppColors.verdeOliva,
+                onPressed: _mostrarSelectorEspaciosDashboard,
+              ),
+              IconButton(
                 key: const Key('boton_perfil_hogar_quehaceres'),
-                tooltip: 'Perfil del hogar',
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFE8E4DA)),
-                  ),
-                  child: Icon(
-                    Icons.group_rounded,
-                    size: 20,
-                    color: tema.colorScheme.primary,
-                  ),
-                ),
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.perfilHogar),
+                tooltip: 'Perfil del espacio',
+                icon: const Icon(Icons.group_rounded),
+                color: AppColors.verdeOliva,
+                onPressed: _irAPerfilHogar,
               ),
               IconButton(
                 key: const Key('boton_mi_perfil_quehaceres'),
                 tooltip: 'Mi perfil',
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFE8E4DA)),
-                  ),
-                  child: Icon(
-                    Icons.person_outline_rounded,
-                    size: 20,
-                    color: tema.colorScheme.primary,
-                  ),
-                ),
+                icon: const Icon(Icons.person_outline_rounded),
+                color: AppColors.verdeOliva,
                 onPressed: () =>
                     Navigator.of(context).pushNamed(AppRoutes.editarPerfil),
               ),
@@ -1509,7 +1835,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 )
               : null,
           body: SafeArea(
-            child: StreamBuilder<List<Quehacer>>(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: StreamBuilder<List<Quehacer>>(
               stream: _obtenerQuehaceresStream(hogarId),
               builder: (context, quehaceresSnap) {
                 if (quehaceresSnap.hasError) {
@@ -1526,14 +1855,139 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 final todos = quehaceresSnap.data ?? [];
                 final misQuehaceres =
                     todos.where((q) => q.asignadoA == uidActual).toList();
-                final lista =
+                final baseLista =
                     _filtroQuehaceres == 'mis' ? misQuehaceres : todos;
+
+                final queryTarea =
+                    _busquedaQuehaceresCtrl.text.trim().toLowerCase();
+
+                final lista = baseLista.where((q) {
+                  if (_filtroCategoriaQuehaceres != 'todas' &&
+                      q.categoria != _filtroCategoriaQuehaceres) {
+                    return false;
+                  }
+                  if (_filtroPrioridadQuehaceres != 'todas' &&
+                      q.prioridad != _filtroPrioridadQuehaceres) {
+                    return false;
+                  }
+                  if (queryTarea.isNotEmpty) {
+                    final respNombre =
+                        (integrantesMap[q.asignadoA] ?? '').toLowerCase();
+                    final catNombre = CategoriaQuehacer.etiquetaDe(q.categoria)
+                        .toLowerCase();
+                    final coincideTitulo =
+                        q.titulo.toLowerCase().contains(queryTarea);
+                    final coincideDesc =
+                        q.descripcion?.toLowerCase().contains(queryTarea) ??
+                            false;
+                    final coincideResp = respNombre.contains(queryTarea);
+                    final coincideCat = catNombre.contains(queryTarea);
+                    if (!coincideTitulo &&
+                        !coincideDesc &&
+                        !coincideResp &&
+                        !coincideCat) {
+                      return false;
+                    }
+                  }
+                  return true;
+                }).toList();
+
+                final totalBase = baseLista.length;
+                final hechosBase = baseLista.where((q) => q.hecho).length;
+                final altaPrioridadPendientes = baseLista
+                    .where((q) =>
+                        !q.hecho && q.prioridad == PrioridadQuehacer.alta)
+                    .length;
 
                 return Column(
                   children: [
+                    if (totalBase > 0)
+                      Container(
+                        key: const Key('banner_progreso_quehaceres'),
+                        margin: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: hechosBase == totalBase
+                                ? AppColors.verdeOliva.withValues(alpha: 0.4)
+                                : AppColors.borde,
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  hechosBase == totalBase
+                                      ? Icons.task_alt_rounded
+                                      : Icons.assignment_outlined,
+                                  size: 20,
+                                  color: hechosBase == totalBase
+                                      ? AppColors.verdeOliva
+                                      : AppColors.bronceMocha,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    hechosBase == totalBase
+                                        ? 'Todas las tareas están completadas.'
+                                        : 'Avance de tareas: $hechosBase de $totalBase completadas',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: hechosBase == totalBase
+                                          ? AppColors.verdeOliva
+                                          : AppColors.textoPrincipal,
+                                    ),
+                                  ),
+                                ),
+                                if (altaPrioridadPendientes > 0)
+                                  Container(
+                                    key: const Key('badge_alta_prioridad_resumen'),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFDE8E6),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$altaPrioridadPendientes alta prioridad',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFFC24134),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                value: totalBase > 0
+                                    ? (hechosBase / totalBase)
+                                    : 0.0,
+                                minHeight: 6,
+                                backgroundColor:
+                                    AppColors.linoClaro.withValues(alpha: 0.4),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  hechosBase == totalBase
+                                      ? AppColors.verdeOliva
+                                      : AppColors.bronceMocha,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                          horizontal: 20, vertical: 8),
                       child: Container(
                         decoration: BoxDecoration(
                           color: const Color(0xFFEBE7DD),
@@ -1567,7 +2021,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         : null,
                                   ),
                                   child: Text(
-                                    'Mis quehaceres',
+                                    'Mis tareas',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
@@ -1606,7 +2060,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         : null,
                                   ),
                                   child: Text(
-                                    'Todos los del hogar',
+                                    'Todas las del espacio',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
@@ -1623,6 +2077,127 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 5,
+                            child: TextField(
+                              key: const Key('buscador_inline_quehaceres'),
+                              controller: _busquedaQuehaceresCtrl,
+                              decoration: InputDecoration(
+                                hintText: 'Buscar tarea o responsable...',
+                                isDense: true,
+                                prefixIcon:
+                                    const Icon(Icons.search_rounded, size: 19),
+                                suffixIcon:
+                                    _busquedaQuehaceresCtrl.text.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(
+                                                Icons.clear_rounded,
+                                                size: 18),
+                                            onPressed: () {
+                                              _busquedaQuehaceresCtrl.clear();
+                                              setState(() {});
+                                            },
+                                          )
+                                        : null,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            flex: 4,
+                            child: DropdownButtonFormField<String>(
+                              key: const Key('dropdown_filtro_categoria'),
+                              initialValue: _filtroCategoriaQuehaceres,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Categoría / Área',
+                                isDense: true,
+                                prefixIcon: Icon(Icons.filter_list_rounded,
+                                    size: 18),
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 9),
+                              ),
+                              items: [
+                                const DropdownMenuItem<String>(
+                                  value: 'todas',
+                                  child: Text(
+                                    'Todas las áreas',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                                ...CategoriaQuehacer.etiquetas.entries.map(
+                                  (e) => DropdownMenuItem<String>(
+                                    value: e.key,
+                                    child: Text(
+                                      e.value,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(
+                                      () => _filtroCategoriaQuehaceres = val);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            flex: 3,
+                            child: DropdownButtonFormField<String>(
+                              key: const Key('dropdown_filtro_prioridad'),
+                              initialValue: _filtroPrioridadQuehaceres,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Prioridad',
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 9),
+                              ),
+                              items: [
+                                const DropdownMenuItem<String>(
+                                  value: 'todas',
+                                  child: Text(
+                                    'Todas',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                                ...PrioridadQuehacer.etiquetas.entries.map(
+                                  (e) => DropdownMenuItem<String>(
+                                    value: e.key,
+                                    child: Text(
+                                      e.value,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(
+                                      () => _filtroPrioridadQuehaceres = val);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
                     Expanded(
                       child: lista.isEmpty
                           ? const Center(
@@ -1680,9 +2255,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               },
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
+  },
+);
   }
 }
 
